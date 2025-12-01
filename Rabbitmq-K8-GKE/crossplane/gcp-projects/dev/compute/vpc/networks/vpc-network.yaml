@@ -1,0 +1,22 @@
+# Example Crossplane-managed VPC Network on GCP.
+# This is OPTIONAL and NOT required for the local Kubernetes lab (kind).
+#
+# To use it:
+# 1. Configure a Crossplane GCP provider named `gcp-provider-config`
+# 2. Replace "<NETWORK_NAME>" with your desired VPC name
+# 3. Apply with:
+#      kubectl apply -f vpc-network-example.yaml
+
+apiVersion: compute.gcp.crossplane.io/v1beta1
+kind: Network
+metadata:
+  name: "<NETWORK_NAME>"          # e.g., my-build-network
+spec:
+  forProvider:
+    autoCreateSubnetworks: false  # manual subnet creation recommended
+    description: "Example VPC network created by Crossplane"
+    routingConfig:
+      routingMode: REGIONAL       # options: REGIONAL or GLOBAL
+  providerConfigRef:
+    # Replace with your Crossplane GCP provider config
+    name: gcp-provider-config
