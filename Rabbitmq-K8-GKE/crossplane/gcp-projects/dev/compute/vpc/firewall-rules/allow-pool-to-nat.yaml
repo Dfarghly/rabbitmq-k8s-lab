@@ -1,0 +1,33 @@
+# Example Crossplane-managed Firewall rule for allowing internal traffic
+# (e.g., from a node pool or subnet) to reach a NAT gateway instance.
+#
+# This file is OPTIONAL and NOT required for the local Kubernetes lab (kind).
+# It is provided only as a reference for users deploying on GCP with Crossplane.
+#
+# To use it:
+# 1. Configure a Crossplane GCP provider named `gcp-provider-config`
+# 2. Replace placeholders:
+#      "<VPC_NETWORK_NAME>"   -> your VPC network name (e.g., my-network)
+#      "<SOURCE_CIDR_RANGE>"  -> CIDR block of nodes allowed to access NAT
+# 3. Apply the manifest:
+#      kubectl apply -f allow-pool-to-nat-example.yaml
+
+apiVersion: compute.gcp.upbound.io/v1beta2
+kind: Firewall
+metadata:
+  name: allow-pool-to-nat
+spec:
+  forProvider:
+    # The VPC network where this rule applies
+    network: "<VPC_NETWORK_NAME>"             # e.g. my-vpc-network
+
+    direction: INGRESS
+    priority: 1000
+
+    # Firewall will apply to VMs tagged with this
+    targetTags:
+      - nat-gateway
+
+    # CIDR range of the nodes or subnets allowed to reach the NAT VM
+    sourceRanges:
+      - "<SOURCE_CIDR_RANGE>"                 # e.g. 10.2.0.0/24
