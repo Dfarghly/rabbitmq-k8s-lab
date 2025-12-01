@@ -1,0 +1,45 @@
+# This file demonstrates how to create a simple NAT gateway VM using Crossplane
+# in GCP. It is NOT required for the local Kubernetes lab (kind cluster).
+#
+# To use it:
+# 1. Configure a Crossplane GCP provider named `gcp-provider-config`
+# 2. Replace "<GCP_ZONE>", "<SUBNETWORK_NAME>", "<STATIC_EXTERNAL_IP>" with your values
+# 3. Apply the manifest:
+#    kubectl apply -f nat-vm-example.yaml
+
+apiVersion: compute.gcp.upbound.io/v1beta2
+kind: Instance
+metadata:
+  name: nat-vm
+spec:
+  forProvider:
+    machineType: n1-standard-1
+    zone: "<GCP_ZONE>"                # e.g. us-central1-a
+    bootDisk:
+      initializeParams:
+        image: debian-cloud/debian-11
+
+    networkInterface:
+      - subnetwork: "<SUBNETWORK_NAME>"       # e.g. nat-subnet
+        accessConfig:
+          - natIp: "<STATIC_EXTERNAL_IP>"     # e.g. from a reserved address
+
+    tags:
+      - direct-gateway-access
+      - nat-gateway
+      - no-ip
+
+    metadataStartupScript: |
+      #!/bin/bash
+      # Enable IP forwarding
+      sysctl -w net.ipv4.ip_forward=1
+
+      # Configure NAT using iptables
+      iface=$(ip addr show scope global | head -1 | awk -F: '{print $2}')
+      iptables -t nat -A POSTROUTING -o $iface -j MASQUERADE
+
+    canIpForward: true
+
+  providerConfigRef:
+    # Replace with your own Crossplane GCP provider
+    name: gcp-provider-config
