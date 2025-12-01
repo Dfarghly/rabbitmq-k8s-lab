@@ -1,0 +1,38 @@
+# This is an example Crossplane NodePool for running RabbitMQ on a dedicated
+# GKE node pool. It is NOT used by the local kind lab setup.
+# Fill in <GCP_PROJECT_ID>, <ZONE>, and <CLUSTER_NAME> with your own values.
+apiVersion: container.gcp.crossplane.io/v1beta1
+kind: NodePool
+metadata:
+  name: rabbitmq-pool
+spec:
+  forProvider:
+    # Replace with your own project, zone and cluster name
+    cluster: projects/<GCP_PROJECT_ID>/zones/<ZONE>/clusters/<CLUSTER_NAME>
+
+    # Initial size of the node pool
+    initialNodeCount: 1
+
+    # Cluster autoscaler settings for this node pool
+    autoscaling:
+      enabled: true
+      minNodeCount: 1
+      maxNodeCount: 3
+
+    # Node configuration
+    config:
+      machineType: e2-standard-4        # example, cheaper than n2-standard-8
+      diskType: pd-standard             # example, cheaper than pd-ssd
+      diskSizeGb: 100
+      imageType: COS_CONTAINERD
+      labels:
+        dedicated: rabbitmq
+        workload: rabbitmq
+      taints:
+        - key: dedicated
+          value: rabbitmq
+          effect: NO_SCHEDULE
+
+  # Crossplane provider config name (define this separately)
+  providerConfigRef:
+    name: gcp-provider-config

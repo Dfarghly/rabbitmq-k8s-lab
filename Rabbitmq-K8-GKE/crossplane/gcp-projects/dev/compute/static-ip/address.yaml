@@ -1,0 +1,20 @@
+# This file demonstrates how to reserve a static external IP address using
+# Crossplane on GCP. It is optional and NOT required for the local kind-based lab.
+#
+# To use it:
+# 1. Configure a Crossplane GCP provider named `gcp-provider-config`
+# 2. Replace "<GCP_REGION>" with your region (e.g. us-central1)
+# 3. Apply the manifest:
+#    kubectl apply -f static-ip-example.yaml
+
+apiVersion: compute.gcp.upbound.io/v1beta1
+kind: Address
+metadata:
+  name: nat-gateway-ip
+spec:
+  forProvider:
+    region: "<GCP_REGION>"          # e.g. us-central1
+    addressType: EXTERNAL
+    description: "Static external IP for NAT gateway example"
+  providerConfigRef:
+    name: gcp-provider-config       # Replace with your provider config name
