@@ -1,0 +1,95 @@
+# ------------------------------------------------------------
+# rabbitmq-policies.yaml
+# ------------------------------------------------------------
+# Common RabbitMQ policies for labs:
+#   - HA (replication)
+#   - Quorum queue policy
+#   - Lazy queue (disk-backed)
+#   - TTL example
+#   - DLX policy example
+#
+# Apply:
+#   kubectl apply -f rabbitmq-policies.yaml
+# ------------------------------------------------------------
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Policy
+metadata:
+  name: ha-all
+  namespace: rabbitmq-system
+spec:
+  name: ha-all
+  vhost: app-vhost
+  pattern: ".*"
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  definition:
+    ha-mode: all
+  priority: 0
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Policy
+metadata:
+  name: quorum-queues
+  namespace: rabbitmq-system
+spec:
+  name: quorum-queues
+  vhost: app-vhost
+  pattern: "^quorum-.*"
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  definition:
+    queue-mode: default
+    queue-type: quorum
+    delivery-limit: 3
+  priority: 1
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Policy
+metadata:
+  name: lazy-queues
+  namespace: rabbitmq-system
+spec:
+  name: lazy-queues
+  vhost: app-vhost
+  pattern: "^lazy-.*"
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  definition:
+    queue-mode: lazy
+  priority: 2
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Policy
+metadata:
+  name: ttl-policy
+  namespace: rabbitmq-system
+spec:
+  name: ttl-policy
+  vhost: app-vhost
+  pattern: "^ttl-.*"
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  definition:
+    message-ttl: 60000 # 60 seconds
+  priority: 3
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Policy
+metadata:
+  name: dlx-policy
+  namespace: rabbitmq-system
+spec:
+  name: dlx-policy
+  vhost: app-vhost
+  pattern: "^dlx-.*"
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  definition:
+    dead-letter-exchange: "app-dlx"
+  priority: 4

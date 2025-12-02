@@ -1,0 +1,27 @@
+# ------------------------------------------------------------
+# rabbitmq-ha-policy.yaml
+# ------------------------------------------------------------
+# Simple HA policy that mirrors all classic queues across nodes.
+#
+# Applies to:
+#   - vhost: app-vhost
+#   - pattern: ".*" (all queues)
+#
+# Apply:
+#   kubectl apply -f rabbitmq-ha-policy.yaml
+# ------------------------------------------------------------
+
+apiVersion: rabbitmq.com/v1beta1
+kind: Policy
+metadata:
+  name: ha-all
+  namespace: rabbitmq-system
+spec:
+  name: ha-all
+  vhost: app-vhost
+  pattern: ".*"
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  definition:
+    ha-mode: all
+  priority: 0

@@ -1,0 +1,49 @@
+# ------------------------------------------------------------
+# rabbitmq-federation-example.yaml
+# ------------------------------------------------------------
+# Example of defining a Federation upstream on rabbitmq-lab.
+#
+# This lets your lab cluster federate from another RabbitMQ
+# instance (on-prem, cloud, etc.).
+#
+# BEFORE APPLYING:
+#   Edit the URI below to point to your real upstream:
+#     - host
+#     - username/password
+#     - vhost
+#
+# Apply:
+#   kubectl apply -f rabbitmq-federation-example.yaml
+# ------------------------------------------------------------
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rabbitmq-federation-upstream-credentials
+  namespace: rabbitmq-system
+type: Opaque
+stringData:
+  # Example upstream URI – replace with your own:
+  #   amqp://user:password@upstream-rabbitmq:5672/%2f
+  uri: amqp://demo-user:demo-password@upstream-rabbitmq:5672/%2f
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Federation
+metadata:
+  name: rabbitmq-federation-example
+  namespace: rabbitmq-system
+spec:
+  # Name of the upstream as it appears in RabbitMQ
+  name: "upstream-1"
+
+  # Secret with key "uri"
+  uriSecret:
+    name: rabbitmq-federation-upstream-credentials
+
+  # When to acknowledge messages
+  ackMode: "on-confirm"
+
+  rabbitmqClusterReference:
+    name: rabbitmq-lab

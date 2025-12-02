@@ -1,0 +1,54 @@
+# ------------------------------------------------------------
+# rabbitmq-shovel-example.yaml
+# ------------------------------------------------------------
+# Example Shovel that moves messages from a queue on one
+# RabbitMQ instance to a queue on another (or same) instance.
+#
+# BEFORE APPLYING:
+#   Edit srcUri and destUri in the Secret below:
+#     srcUri  = where messages come FROM
+#     destUri = where messages go TO
+#
+# You also need queues named:
+#   - source-queue
+#   - destination-queue
+# in the appropriate vhosts.
+#
+# Apply:
+#   kubectl apply -f rabbitmq-shovel-example.yaml
+# ------------------------------------------------------------
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rabbitmq-shovel-uris
+  namespace: rabbitmq-system
+type: Opaque
+stringData:
+  # Replace these URIs with your real endpoints.
+  # They can be:
+  #   amqp://user:pass@host:5672/vhost
+  #   amqps://user:pass@host:5671/vhost
+  srcUri: amqp://src-user:src-password@source-rabbitmq:5672/%2f
+  destUri: amqp://dest-user:dest-password@rabbitmq-lab:5672/%2f
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Shovel
+metadata:
+  name: rabbitmq-shovel-example
+  namespace: rabbitmq-system
+spec:
+  # Name of the shovel inside RabbitMQ
+  name: "my-shovel"
+
+  uriSecret:
+    name: rabbitmq-shovel-uris
+
+  # Queue on the source and destination
+  srcQueue: "source-queue"
+  destQueue: "destination-queue"
+
+  rabbitmqClusterReference:
+    name: rabbitmq-lab

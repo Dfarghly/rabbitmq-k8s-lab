@@ -1,0 +1,106 @@
+# ------------------------------------------------------------
+# rabbitmq-topology.yaml
+# ------------------------------------------------------------
+# Example RabbitMQ topology:
+#   - Direct exchange
+#   - Worker queue
+#   - Dead-letter queue (DLQ)
+#   - Binding rules
+#
+# Applies to the vhost "app-vhost" created earlier.
+#
+# Apply:
+#   kubectl apply -f rabbitmq-topology.yaml
+# ------------------------------------------------------------
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Exchange
+metadata:
+  name: app-exchange
+  namespace: rabbitmq-system
+spec:
+  name: app-exchange
+  vhost: app-vhost
+  type: direct
+  durable: true
+  autoDelete: false
+  internal: false
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Queue
+metadata:
+  name: app-queue
+  namespace: rabbitmq-system
+spec:
+  name: app-queue
+  vhost: app-vhost
+  durable: true
+  autoDelete: false
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  arguments:
+    "x-dead-letter-exchange": "app-dlx"
+    "x-message-ttl": "60000"   # 60 seconds
+    "x-max-length": "10000"
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Queue
+metadata:
+  name: app-queue-dlq
+  namespace: rabbitmq-system
+spec:
+  name: app-queue-dlq
+  vhost: app-vhost
+  durable: true
+  autoDelete: false
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Exchange
+metadata:
+  name: app-dlx
+  namespace: rabbitmq-system
+spec:
+  name: app-dlx
+  vhost: app-vhost
+  type: direct
+  durable: true
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Binding
+metadata:
+  name: app-binding
+  namespace: rabbitmq-system
+spec:
+  vhost: app-vhost
+  source: app-exchange
+  destination: app-queue
+  destinationType: queue
+  routingKey: app.key
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Binding
+metadata:
+  name: app-dlx-binding
+  namespace: rabbitmq-system
+spec:
+  vhost: app-vhost
+  source: app-dlx
+  destination: app-queue-dlq
+  destinationType: queue
+  routingKey: app.key
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
