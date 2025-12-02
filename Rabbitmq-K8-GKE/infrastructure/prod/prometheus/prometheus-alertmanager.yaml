@@ -1,187 +1,113 @@
 # ------------------------------------------------------------
-# alertmanager-configmap-example.yaml
+# alertmanager-config-rabbitmq.yaml
 # ------------------------------------------------------------
-# Example ConfigMap for Alertmanager configuration.
+# Minimal Alertmanager configuration dedicated ONLY to RabbitMQ
+# alerts, safe for lab environments and public GitHub.
 #
-# SAFE FOR PUBLIC USE:
-# - All Slack webhook URLs replaced with placeholders
-# - All VictorOps / paging API keys replaced with placeholders
-# - Domain- and company-specific names removed or generalized
-#
-# ------------------------------------------------------------
-# 📌 HOW THIS IS USED
-# ------------------------------------------------------------
-# Many Helm charts for Prometheus/Alertmanager mount this ConfigMap
-# into the Alertmanager container at /etc/config/alertmanager.yml.
-#
-# Example (values.yaml for kube-prometheus-stack):
-#   alertmanager:
-#     configMapOverrideName: alertmanager-config
-#
-# ------------------------------------------------------------
-# 📌 HOW TO USE IN YOUR LAB
-# ------------------------------------------------------------
-#
-# 1. Choose a namespace for monitoring (e.g. "monitoring"):
-#      kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
-#
-# 2. Replace ALL placeholders:
-#      <SLACK_WEBHOOK_MONITORING>
-#      <SLACK_WEBHOOK_MONITORING_TEST>
-#      <PAGING_API_KEY>
-#      <PAGING_ROUTING_KEY_DEFAULT>
-#      <PAGING_ROUTING_KEY_TEAM_A>
-#      <SLACK_CHANNEL_MONITORING>
-#      <SLACK_CHANNEL_MONITORING_TEST>
-#      <WIKI_URL>
-#
-# 3. Apply:
-#      kubectl apply -f alertmanager-configmap-example.yaml
-#
-# 4. Wire it into your Alertmanager deployment/Helm chart as appropriate.
+# All webhook URLs, channels, and runbook links are placeholders.
 #
 # ------------------------------------------------------------
 
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: alertmanager-config
-  namespace: <MONITORING_NAMESPACE>      # e.g. monitoring
+  name: alertmanager-rabbitmq-config
+  namespace: <MONITORING_NAMESPACE>     # e.g. monitoring
 data:
   alertmanager.yml: |
     global: {}
 
+    # Suppress warning alerts when a critical alert for same condition exists
     inhibit_rules:
-      - equal:
-          - alertname
+      - equal: ["alertname"]
         source_match:
           severity: critical
         target_match:
           severity: warning
 
     receivers:
-      # Default receiver for general monitoring notifications
-      - name: monitoring
+      # Default RabbitMQ receiver (warnings/info)
+      - name: rabbitmq-monitoring
         slack_configs:
-          - api_url: <SLACK_WEBHOOK_MONITORING>
-            channel: "<SLACK_CHANNEL_MONITORING>"     # e.g. "#monitoring"
+          - api_url: <SLACK_WEBHOOK_RABBITMQ>
+            channel: "<SLACK_CHANNEL_RABBITMQ>"
             send_resolved: true
-            text: '{{ template "slack.default.text" . }}'
-            title: '{{ template "slack.default.title" . }}'
+            text: '{{ template "slack.rabbitmq.text" . }}'
+            title: '{{ template "slack.rabbitmq.title" . }}'
 
-      # Paging receiver for critical / "page" severity alerts
-      - name: monitoring-page
+      # Critical alerts receiver (pages)
+      - name: rabbitmq-page
         slack_configs:
-          - api_url: <SLACK_WEBHOOK_MONITORING>
-            channel: "<SLACK_CHANNEL_MONITORING>"
+          - api_url: <SLACK_WEBHOOK_RABBITMQ>
+            channel: "<SLACK_CHANNEL_RABBITMQ>"
             send_resolved: true
-            text: '{{ template "slack.default.text" . }}'
-            title: '{{ template "slack.default.title" . }}'
+            text: '{{ template "slack.rabbitmq.text" . }}'
+            title: '{{ template "slack.rabbitmq.title" . }}'
         victorops_configs:
-          - api_key: <PAGING_API_KEY>
-            routing_key: <PAGING_ROUTING_KEY_DEFAULT>
-            state_message: 'Alert: {{ .CommonLabels.alertname }}. Summary: {{ .CommonAnnotations.summary }}. RawData: {{ .CommonLabels }}'
+          - api_key: <RABBITMQ_PAGING_API_KEY>
+            routing_key: <RABBITMQ_PAGING_ROUTING_KEY>
+            state_message: >
+              Alert: {{ .CommonLabels.alertname }}.
+              Summary: {{ .CommonAnnotations.summary }}.
+              RawData: {{ .CommonLabels }}
 
-      # Receiver for test / sandbox alerts
-      - name: monitoring-test
+      # Test-only RabbitMQ receiver (sandbox load tests)
+      - name: rabbitmq-test
         slack_configs:
-          - api_url: <SLACK_WEBHOOK_MONITORING_TEST>
-            channel: "<SLACK_CHANNEL_MONITORING_TEST>"   # e.g. "#monitoring-test"
+          - api_url: <SLACK_WEBHOOK_RABBITMQ_TEST>
+            channel: "<SLACK_CHANNEL_RABBITMQ_TEST>"
             send_resolved: true
-            text: '{{ template "slack.default.text" . }}'
-            title: '{{ template "slack.default.title" . }}'
+            text: '{{ template "slack.rabbitmq.text" . }}'
+            title: '{{ template "slack.rabbitmq.title" . }}'
 
-      # Example team-specific receivers (Team A)
-      - name: team-a-pager-prod
-        slack_configs:
-          - api_url: <SLACK_WEBHOOK_MONITORING>
-            channel: "<SLACK_CHANNEL_MONITORING>"
-            send_resolved: true
-            text: '{{ template "slack.default.text" . }}'
-        victorops_configs:
-          - api_key: <PAGING_API_KEY>
-            routing_key: <PAGING_ROUTING_KEY_TEAM_A>
-            state_message: 'Alert: {{ .CommonLabels.alertname }}. Summary: {{ .CommonAnnotations.summary }}. RawData: {{ .CommonLabels }}'
-
-      - name: team-a-test
-        slack_configs:
-          - api_url: <SLACK_WEBHOOK_MONITORING_TEST>
-            channel: "<SLACK_CHANNEL_MONITORING_TEST>"
-            send_resolved: true
-            text: '{{ template "slack.default.text" . }}'
-            title: '{{ template "slack.default.title" . }}'
-
-      - name: team-a-prod
-        slack_configs:
-          - api_url: <SLACK_WEBHOOK_MONITORING>
-            channel: "<SLACK_CHANNEL_MONITORING>"
-            send_resolved: true
-            text: '{{ template "slack.default.text" . }}'
-            title: '{{ template "slack.default.title" . }}'
-
+    # ------------------------------------------------------------
+    # Routing Logic (RabbitMQ ONLY)
+    # ------------------------------------------------------------
     route:
-      group_by: ["alertname"]
+      group_by: ["alertname", "service", "vhost"]
       group_interval: 5m
       group_wait: 30s
-      receiver: monitoring-test
+      receiver: rabbitmq-test      # default for lab/test
       repeat_interval: 3h
 
       routes:
-        # Example team route (Team A) with nested routes for env + severity
+        # 🚨 Critical RabbitMQ events → paging channel
         - match:
-            team: team-a
-          receiver: monitoring-test
-          routes:
-            - match:
-                env: production
-                severity: page
-              receiver: team-a-pager-prod
-            - match:
-                env: production
-              receiver: team-a-prod
+            component: rabbitmq
+            severity: critical
+          receiver: rabbitmq-page
 
-        # Example generic app-based routing (e.g. app: service-x or agent-*)
-        - match_re:
-            app: "^(service-x|agent-.*)$"
-          routes:
-            - match:
-                env: test
-              receiver: team-a-test
-            - match:
-                env: production
-              receiver: team-a-prod
+        # ⚠️ Warning-level RabbitMQ alerts → monitoring channel
+        - match:
+            component: rabbitmq
+            severity: warning
+          receiver: rabbitmq-monitoring
 
-        # Fallback: production pages → monitoring-page
+        # 🧪 Test alerts (matching "test" env) → test receiver
         - match:
-            env: production
-            severity: page
-          receiver: monitoring-page
+            env: test
+            component: rabbitmq
+          receiver: rabbitmq-test
 
-        # Fallback: all other production alerts → monitoring
+        # Default: all RabbitMQ alerts → monitoring
         - match:
-            env: production
-          receiver: monitoring
-
-        # Example cluster-specific routing
-        - match:
-            cluster: builder
-          receiver: monitoring
-        - match:
-            cluster: builder
-            severity: page
-          receiver: monitoring-page
+            component: rabbitmq
+          receiver: rabbitmq-monitoring
 
     templates:
-      - /etc/config/alerts.tmpl
+      - /etc/config/rabbitmq-alerts.tmpl
 
-  alerts.tmpl: |
-    {{ define "slack.default.title" -}}
-      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}
+  rabbitmq-alerts.tmpl: |
+    {{ define "slack.rabbitmq.title" -}}
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]
+      {{ .CommonLabels.alertname }}
     {{- end }}
 
-    {{ define "slack.default.text" -}}
-      *Severity*: {{ .CommonLabels.severity }}
-      *Description*: {{ .CommonAnnotations.description }}
-      *RawData*: {{ .CommonLabels }}
-      *Wiki*: <{{ "<WIKI_URL>" }}|View or update runbook>
+    {{ define "slack.rabbitmq.text" -}}
+      *Severity:* {{ .CommonLabels.severity }}
+      *Component:* {{ .CommonLabels.component }}
+      *Instance:* {{ .CommonLabels.instance }}
+      *Description:* {{ .CommonAnnotations.description }}
+      *Raw Labels:* {{ .CommonLabels }}
+      *Runbook:* <{{ "<RABBITMQ_RUNBOOK_URL>" }}|View>
     {{- end }}

@@ -1,0 +1,28 @@
+# ------------------------------------------------------------
+# k8s-perftest-job.yaml
+# ------------------------------------------------------------
+# Creates a PerfTest load generator inside the cluster.
+# Adjust spec.template.spec.containers.args as needed.
+# ------------------------------------------------------------
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rabbitmq-perftest
+  namespace: rabbitmq-system
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: perf-test
+          image: pivotalrabbitmq/perf-test:latest
+          args:
+            - "--uri=amqp://admin:password@rabbitmq-lab.rabbitmq-system.svc:5672/%2f"
+            - "--queue=load-test"
+            - "--rate=3000"
+            - "--size=1024"
+            - "--producers=4"
+            - "--consumers=4"
+            - "--confirm"

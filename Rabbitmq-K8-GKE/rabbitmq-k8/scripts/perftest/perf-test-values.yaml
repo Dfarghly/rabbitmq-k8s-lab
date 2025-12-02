@@ -1,0 +1,11 @@
+# ------------------------------------------------------------
+# perf-test-values.yaml
+# ------------------------------------------------------------
+
+brokerUri: "amqp://admin:password@rabbitmq-lab.rabbitmq-system.svc:5672/%2f"
+queue: "load-test"
+rate: 5000         # messages per second
+size: 1024         # message size (bytes)
+producers: 6
+consumers: 6
+duration: 300s

@@ -1,425 +1,219 @@
 # ------------------------------------------------------------
-# prometheus-configmap-example.yaml
+# prometheus-config-rabbitmq.yaml
 # ------------------------------------------------------------
-# Example Prometheus server configuration + alerting + recording
-# rules, stored in a ConfigMap.
+# Minimal Prometheus configuration dedicated ONLY to RabbitMQ.
+# Includes:
+#   - RabbitMQ alert rules
+#   - Basic Prometheus config
+#   - K8s discovery for RabbitMQ exporter & nodes
 #
-# SAFE FOR PUBLIC USE:
-# - GCP project IDs replaced with <GCP_PROJECT_ID>
-# - Internal DNS names replaced with placeholders
-# - External URLs can be changed to your own endpoints
-#
-# This pattern is common for "bare" Prometheus installs (non-Operator),
-# where the ConfigMap is mounted into the Prometheus pod at /etc/config.
+# SAFE FOR PUBLIC USE — no internal domains or credentials.
 #
 # ------------------------------------------------------------
-# 📌 HOW TO USE IN YOUR LAB
-# ------------------------------------------------------------
+# 📌 LAB USAGE
 #
-# 1. Choose a monitoring namespace (e.g. "monitoring"):
-#      kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+# kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+# kubectl apply -f prometheus-config-rabbitmq.yaml
 #
-# 2. Apply this ConfigMap:
-#      kubectl apply -f prometheus-configmap-example.yaml
-#
-# 3. Ensure your Prometheus Deployment/StatefulSet mounts:
-#      - /etc/config/prometheus.yml
-#      - /etc/config/alerts
-#      - /etc/config/rules
-#
-#    Example container args:
-#      - '--config.file=/etc/config/prometheus.yml'
-#
-# 4. Adapt scrape targets, GCP projects, domains, and alert rules
-#    to match your own environment.
-#
+# Ensure Prometheus mounts:
+#   /etc/config/prometheus.yml
+#   /etc/config/alerts
 # ------------------------------------------------------------
 
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: prometheus-server-config
-  namespace: <MONITORING_NAMESPACE>        # e.g. monitoring
+  name: prometheus-rabbitmq-config
+  namespace: <MONITORING_NAMESPACE>    # e.g. monitoring
   labels:
     app: prometheus
     component: server
 data:
   # ----------------------------------------------------------
-  # 1) Legacy "alerting_rules.yml" – unused in this example
+  # 1) Unused legacy rule file (kept for compatibility)
   # ----------------------------------------------------------
   alerting_rules.yml: |
     {}
 
   # ----------------------------------------------------------
-  # 2) Alerting rules – main Prometheus alert definitions
+  # 2) RabbitMQ Alert Rules (ONLY RabbitMQ)
   # ----------------------------------------------------------
   alerts: |
     groups:
-    - name: cadvisor
-      rules:
-      - alert: ContainerMemoryLimitReached
-        annotations:
-          description: Container memory limit reached at least once in the last 5 minutes.
-          summary: Container hit memory cgroup limit
-        expr: rate(container_memory_failcnt{container_name!="",container_name!="prometheus",job="kubernetes-nodes"}[5m]) > 0
-
-    - name: elasticsearch
-      rules:
-      - alert: ElasticsearchExporterDown
-        annotations:
-          description: Unable to contact Elasticsearch exporter for 5 minutes
-          summary: ES Exporter Down for 5m
-        expr: up{component="eslogs-elasticsearch"} == 0
-        for: 5m
-        labels:
-          severity: critical
-
-      - alert: ElasticsearchDown
-        annotations:
-          description: Unable to contact Elasticsearch via exporter
-          summary: ES on {{$labels.instance}} Down
-        expr: elasticsearch_cluster_health_up == 0
-        for: 1m
-        labels:
-          severity: critical
-
-      - alert: ElasticsearchUnhealthy
-        annotations:
-          description: Elasticsearch cluster is not green status
-          summary: ES {{$labels.color}} on {{$labels.instance}} Unhealthy
-        expr: elasticsearch_cluster_health_status{color="green"} != 1
-        for: 3m
-        labels:
-          severity: critical
-
-      - alert: ElasticsearchLowDiskFree
-        annotations:
-          description: Elasticsearch disk is over 80% full on instance {{$labels.instance}} at mountpoint {{$labels.mount}}.
-          summary: ES disk over 80% full ({{$labels.instance}}) {{$labels.mount}}
-        expr: elasticsearch_filesystem_data_free_bytes < (elasticsearch_filesystem_data_size_bytes * 0.2)
-        for: 30m
-        labels:
-          severity: warning
-
-      - alert: ElasticsearchLowDiskFree
-        annotations:
-          description: Elasticsearch disk is over 85% full on instance {{$labels.instance}} at mountpoint {{$labels.mount}}.
-          summary: ES disk over 85% full ({{$labels.instance}}) {{$labels.mount}}
-        expr: elasticsearch_filesystem_data_free_bytes < (elasticsearch_filesystem_data_size_bytes * 0.15)
-        for: 30m
-        labels:
-          severity: critical
-
-      - alert: CuratorJobFailed
-        annotations:
-          description: 'ES logging cluster failed to run index maintenance: Curator exited non-zero'
-          summary: Curator container did not exit successfully
-        expr: kube_pod_container_status_terminated_reason{namespace="eslogs",container="curator",reason="Completed"} == 0
-        for: 90m
-        labels:
-          severity: warning
-
-    # (Foundry, GCE, GKE, hydra, aiengine, redis, etc. alert groups omitted here for brevity)
-    # You can keep your original rules or trim down to only the ones you need.
-    # Below is an example RabbitMQ group, since that's central to your lab.
-
     - name: rabbitmq
       rules:
+
       - alert: RabbitMQDown
         annotations:
-          description: rabbitmq_exporter is unable to contact RabbitMQ
-          summary: RabbitMQ on {{$labels.instance}} Down
-        expr: rabbitmq_up{job="rabbitmq"} == 0
+          description: RabbitMQ exporter cannot reach RabbitMQ.
+          summary: RabbitMQ instance {{$labels.instance}} is DOWN.
+        expr: rabbitmq_up == 0
         for: 3m
         labels:
-          severity: page
+          severity: critical
+          component: rabbitmq
 
       - alert: RabbitMQExporterDown
         annotations:
-          description: unable to contact RabbitMQ exporter
-          summary: RabbitMQ exporter on {{$labels.instance}} Down
+          description: Prometheus cannot scrape the RabbitMQ exporter.
+          summary: RabbitMQ exporter {{$labels.instance}} is unreachable.
         expr: up{job="rabbitmq"} == 0
         for: 3m
         labels:
-          severity: page
+          severity: critical
+          component: rabbitmq
 
       - alert: HighRabbitQueueSize
         annotations:
-          description: Rabbit queue disk usage exceeds 256MiB.
-          summary: Rabbit queue disk usage over 256MiB
-        expr: rabbitmq_queue_message_bytes > (1024 * 1024 * 256)
+          description: Queue disk usage exceeds 256MiB.
+          summary: High disk usage on queue for vhost {{$labels.vhost}}.
+        expr: rabbitmq_queue_message_bytes > (256 * 1024 * 1024)
         labels:
-          component: rabbitmq
-          service: '{{ $labels.vhost }}'
           severity: warning
+          component: rabbitmq
 
       - alert: HighRabbitQueueReadySize
         annotations:
-          description: Rabbit queue ready message usage over 1GiB; queue may begin to discard messages.
-          summary: Rabbit queue ready message usage over 1GiB
+          description: Queue has >1GiB ready messages, risk of message drops.
+          summary: High ready message count on vhost {{$labels.vhost}}.
         expr: rabbitmq_queue_message_bytes_ready > (1024 * 1024 * 1024)
         labels:
+          severity: critical
           component: rabbitmq
-          service: '{{ $labels.vhost }}'
-          severity: page
 
       - alert: RabbitQueueMaxSizeExceeded
         annotations:
-          description: Queue max size exceeded; excess messages are routing to dead-letter exchange.
-          summary: Queue max size exceeded.
+          description: Queue max size exceeded; messages flowing into DLX.
+          summary: DLX messages detected for vhost {{$labels.vhost}}.
         expr: rabbitmq_exchange_messages_published_in_total{exchange="dead-letter"} > 0
         labels:
+          severity: critical
           component: rabbitmq
-          service: '{{ $labels.vhost }}'
-          severity: page
 
-      - alert: HighRabbitCPUUsage
+      - alert: RabbitHighCPUUsage
         annotations:
-          description: RabbitMQ node CPU usage exceeds 50% over 5 mins.
-          summary: Rabbit CPU usage exceeds 50% over 5 mins
-        expr: avg_over_time(instance:node_cpu:percent_total{instance=~"^rabbitmq-.+"}[5m]) > 50
+          description: RabbitMQ node CPU usage >50% for 5 minutes.
+          summary: High CPU usage on node {{$labels.instance}}.
+        expr: avg_over_time(instance:node_cpu:percent_total{instance=~"^rabbitmq.*"}[5m]) > 50
         labels:
-          component: rabbitmq
-          service: rabbitmq
           severity: warning
+          component: rabbitmq
 
       - alert: RabbitPartitionDetected
         annotations:
-          description: RabbitMQ partitions exceed 0
-          summary: Rabbit network partitions detected
+          description: RabbitMQ cluster partition detected.
+          summary: RabbitMQ partition detected.
         expr: rabbitmq_partitions > 0
         labels:
+          severity: critical
           component: rabbitmq
-          service: rabbitmq
-          severity: page
 
       - alert: RabbitHighMemoryAlarm
         annotations:
-          description: RabbitMQ on {{ $labels.node }} throwing high memory alarm
-          summary: RabbitMQ on {{ $labels.node }} throwing high memory alarm
+          description: RabbitMQ node is in memory alarm state.
+          summary: Memory alarm active on node {{$labels.node}}.
         expr: sum(rabbitmq_node_mem_alarm) by (node) > 0
         labels:
-          component: rabbitmq
-          service: rabbitmq
           severity: critical
-
-      - alert: K8RabbitMQExporterDown
-        annotations:
-          description: unable to contact RabbitMQ exporter
-          summary: "[k8] RabbitMQ exporter on {{$labels.instance}} Down"
-        expr: up{job="kubernetes-service-endpoints",kubernetes_name=~"rabbitmq.*"} == 0
-        labels:
-          severity: page
+          component: rabbitmq
 
       - alert: RabbitMQMemoryHigh
         annotations:
-          description: RabbitMQ is using more than 80% of its allocated memory.
-          summary: "[k8] RabbitMQ memory usage high on {{ $labels.instance }}"
-        expr: (rabbitmq_resident_memory_used_bytes/rabbitmq_resident_memory_limit_bytes) * 100 > 80
+          description: RabbitMQ memory usage exceeds 80%.
+          summary: High memory usage on {{$labels.instance}}.
+        expr: (rabbitmq_resident_memory_used_bytes / rabbitmq_resident_memory_limit_bytes) * 100 > 80
         labels:
           severity: warning
+          component: rabbitmq
 
       - alert: HighRabbitMemoryUsedWatermark
         annotations:
-          description: RabbitMQ node is above the configured memory high watermark (0.6).
-          summary: "[k8] RabbitMQ memory alarm triggered"
+          description: RabbitMQ above high memory watermark (0.6).
+          summary: High memory watermark triggered.
         expr: rabbitmq_alarms_memory_used_watermark > 0.6
         labels:
+          severity: critical
           component: rabbitmq
-          service: "{{ $labels.instance }}"
-          severity: page
 
   # ----------------------------------------------------------
-  # 3) Prometheus main config: scrape + alertmanager targets
+  # 3) Prometheus Main Runtime Config
   # ----------------------------------------------------------
   prometheus.yml: |
     global:
-      evaluation_interval: 1m
-      scrape_interval: 1m
+      scrape_interval: 30s
       scrape_timeout: 10s
-
+      evaluation_interval: 30s
       external_labels:
-        env: production
-        project: <PROJECT_NAME>    # e.g. rabbitmq-lab
+        env: rabbitmq-lab
 
     rule_files:
-      - /etc/config/rules
       - /etc/config/alerts
 
     scrape_configs:
+
+      # Prometheus itself
       - job_name: prometheus
         static_configs:
-          - targets: ["localhost:9090"]
+        - targets: ["localhost:9090"]
 
-      - job_name: kubernetes-apiservers
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      # RabbitMQ K8s Service Endpoints (scrapes metrics on :15692)
+      - job_name: rabbitmq
         kubernetes_sd_configs:
-          - role: endpoints
+        - role: endpoints
         relabel_configs:
-          - action: keep
-            regex: default;kubernetes;https
-            source_labels:
-              - __meta_kubernetes_namespace
-              - __meta_kubernetes_service_name
-              - __meta_kubernetes_endpoint_port_name
-        scheme: https
-        tls_config:
-          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        - action: keep
+          regex: "true"
+          source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+        - action: replace
+          source_labels: [__meta_kubernetes_service_annotation_prometheus_io_port]
+          regex: "(.+)"
+          target_label: __address__
+          replacement: "${1}"
+        - action: replace
+          source_labels: [__meta_kubernetes_service_namespace]
+          target_label: kubernetes_namespace
+        - action: replace
+          source_labels: [__meta_kubernetes_service_name]
+          target_label: kubernetes_name
 
-      - job_name: kubernetes-service-endpoints
-        kubernetes_sd_configs:
-          - role: endpoints
-        relabel_configs:
-          - action: keep
-            regex: true
-            source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
-          - action: replace
-            regex: (https?)
-            source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
-            target_label: __scheme__
-          - action: replace
-            regex: (.+)
-            source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
-            target_label: __metrics_path__
-          - action: replace
-            regex: (.+)(?::\d+);(\d+)
-            replacement: $1:$2
-            source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
-            target_label: __address__
-          - action: labelmap
-            regex: __meta_kubernetes_service_label_(.+)
-          - action: replace
-            source_labels: [__meta_kubernetes_service_namespace]
-            target_label: kubernetes_namespace
-          - action: replace
-            source_labels: [__meta_kubernetes_service_name]
-            target_label: kubernetes_name
-
-      - job_name: kubernetes-pods
-        kubernetes_sd_configs:
-          - role: pod
-        relabel_configs:
-          - action: keep
-            regex: true
-            source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-          - action: replace
-            regex: (.+)
-            source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-            target_label: __metrics_path__
-          - action: replace
-            regex: (.+);(\d+)
-            replacement: ${1}:${2}
-            source_labels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port]
-            target_label: __address__
-          - action: labelmap
-            regex: __meta_kubernetes_pod_label_(.+)
-          - action: replace
-            source_labels: [__meta_kubernetes_pod_namespace]
-            target_label: kubernetes_namespace
-          - action: replace
-            source_labels: [__meta_kubernetes_pod_name]
-            target_label: kubernetes_pod_name
-
+      # Node Metrics (CPU, memory, disk, network)
       - job_name: kubernetes-nodes
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         kubernetes_sd_configs:
-          - role: node
-        relabel_configs:
-          - action: labelmap
-            regex: __meta_kubernetes_node_label_(.+)
-          - replacement: kubernetes.default.svc:443
-            target_label: __address__
-          - regex: (.+)
-            replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
-            source_labels: [__meta_kubernetes_node_name]
-            target_label: __metrics_path__
-        scheme: https
+        - role: node
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         tls_config:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-
-      # Example static scrape of a cost-exporter inside GCP or another cluster
-      - job_name: gcp-costs
-        scrape_interval: 5m
-        scrape_timeout: 60s
-        static_configs:
-          - targets:
-              - <GCP_COSTS_EXPORTER_HOST>:9001   # e.g. costs-exporter.internal:9001
-
-      # Example static scrape of a taskqueue metrics exporter
-      - job_name: taskqueue-metrics
-        scrape_interval: 5m
-        scrape_timeout: 60s
-        static_configs:
-          - targets:
-              - <TASKQUEUE_EXPORTER_HOST>:80     # e.g. taskqueue-exporter.example.com:80
+        scheme: https
+        relabel_configs:
+        - action: labelmap
+          regex: __meta_kubernetes_node_label_(.+)
+        - replacement: kubernetes.default.svc:443
+          target_label: __address__
+        - regex: (.+)
+          source_labels: [__meta_kubernetes_node_name]
+          target_label: __metrics_path__
+          replacement: /api/v1/nodes/${1}/proxy/metrics
 
     alerting:
       alertmanagers:
-        - kubernetes_sd_configs:
-            - role: pod
-          bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-          tls_config:
-            ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-          relabel_configs:
-            - source_labels: [__meta_kubernetes_namespace]
-              regex: <MONITORING_NAMESPACE>
-              action: keep
-            - source_labels: [__meta_kubernetes_pod_label_app]
-              regex: prometheus
-              action: keep
-            - source_labels: [__meta_kubernetes_pod_label_component]
-              regex: alertmanager
-              action: keep
+      - kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - action: keep
+          regex: <MONITORING_NAMESPACE>
+          source_labels: [__meta_kubernetes_namespace]
+        - action: keep
+          regex: alertmanager
+          source_labels: [__meta_kubernetes_pod_label_component]
+        - action: keep
+          regex: prometheus
+          source_labels: [__meta_kubernetes_pod_label_app]
 
   # ----------------------------------------------------------
-  # 4) Recording rules – example node / pageproxy aggregations
+  # 4) Recording Rules (EMPTY – not needed for RabbitMQ only)
   # ----------------------------------------------------------
   recording_rules.yml: |
     {}
 
   rules: |
-    groups:
-    - name: pageproxy
-      rules:
-      - expr: |
-          (
-            sum(rate(pageproxy_service_http_request_duration_seconds_bucket{le="00.250",service="page"}[5m])) by (service)
-          +
-            sum(rate(pageproxy_service_http_request_duration_seconds_bucket{le="00.750",service="page"}[5m])) by (service)
-          ) / 2 / sum(rate(pageproxy_service_http_request_duration_seconds_count{service="page"}[5m])) by (service)
-        record: service:http_request_duration_apdex_target:ratio
-
-    - name: node-exporter
-      rules:
-      - expr: sum(irate(node_cpu_seconds_total{mode!="idle",mode!="iowait"}[3m])) BY (instance)
-        record: instance:node_cpu:rate:sum
-
-      - expr: count(node_cpu_seconds_total{mode="idle"}) without (cpu,mode)
-        record: instance:node_cpus:count
-
-      - expr: sum(rate(node_cpu_seconds_total{mode!="idle"}[5m])) without (mode)
-        record: instance_cpu:node_cpu_seconds_not_idle:rate5m
-
-      - expr: sum(rate(node_cpu_seconds_total[5m])) without (cpu)
-        record: instance_mode:node_cpu_seconds:rate5m
-
-      - expr: sum(instance_mode:node_cpu_seconds:rate5m{mode!="idle"}) without (mode) / instance:node_cpus:count
-        record: instance:node_cpu_utilization:ratio
-
-      - expr: sum((node_filesystem_size_bytes{mountpoint="/"} - node_filesystem_free_bytes{mountpoint="/"})) BY (instance)
-        record: instance:node_filesystem_usage:sum
-
-      - expr: sum(rate(node_network_receive_bytes_total[3m])) BY (instance)
-        record: instance:node_network_receive_bytes:rate:sum
-
-      - expr: sum(rate(node_network_transmit_bytes_total[3m])) BY (instance)
-        record: instance:node_network_transmit_bytes:rate:sum
-
-      - expr: sum(rate(node_cpu_seconds_total{mode!="idle",mode!="iowait"}[5m])) WITHOUT (cpu, mode) / ON(instance) GROUP_LEFT() count(sum(node_cpu_seconds_total) BY (instance, cpu)) BY (instance)
-        record: instance:node_cpu:ratio
-
-      - expr: sum(rate(node_cpu_seconds_total{mode!="idle",mode!="iowait"}[5m]))
-        record: cluster:node_cpu:sum_rate5m
-
-      - expr: cluster:node_cpu_seconds_total:rate5m / count(sum(node_cpu_seconds_total) BY (instance, cpu))
-        record: cluster:node_cpu:ratio
+    groups: []
