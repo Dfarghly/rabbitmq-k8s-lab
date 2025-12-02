@@ -1,0 +1,36 @@
+# Example Crossplane-managed Cloud Build Private Worker Pool.
+# This pool uses a VPC network with NAT access and NO external IPs.
+#
+# This file is OPTIONAL and NOT required for the local Kubernetes lab (kind).
+# It is only relevant for GCP users deploying Cloud Build Private Pools via Crossplane.
+#
+# To use it:
+# 1. Configure a Crossplane GCP provider named `gcp-provider-config`
+# 2. Replace placeholders with your actual values:
+#       "<POOL_NAME>"            → name of the worker pool
+#       "<GCP_REGION>"           → region where the pool will run (e.g. us-central1)
+#       "<GCP_PROJECT_ID>"       → your project ID
+#       "<VPC_NETWORK_NAME>"     → network name (e.g. build-network)
+# 3. Apply:
+#      kubectl apply -f private-pool-with-nat-example.yaml
+
+apiVersion: cloudbuild.gcp.upbound.io/v1beta2
+kind: WorkerPool
+metadata:
+  name: "<POOL_NAME>"                          # e.g. private-pool-with-nat
+spec:
+  forProvider:
+    displayName: "<POOL_NAME>"                 # visible name in Cloud Build UI
+
+    location: "<GCP_REGION>"                   # e.g. us-central1
+
+    # Private pool must point to a VPC network (via VPC peering)
+    networkConfig:
+      peeredNetwork: "projects/<GCP_PROJECT_ID>/global/networks/<VPC_NETWORK_NAME>"
+
+    workerConfig:
+      diskSizeGb: 100
+      machineType: e2-highcpu-8
+      noExternalIp: true                       # forces network traffic through NAT
+  providerConfigRef:
+    name: gcp-provider-config                  # sanitized provider config name

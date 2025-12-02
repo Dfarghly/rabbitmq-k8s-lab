@@ -1,0 +1,44 @@
+# Example Crossplane-managed GCP Subnetwork.
+# This file is OPTIONAL and NOT required for the local Kubernetes lab (kind).
+#
+# It demonstrates how to create:
+#   - A primary subnet (for NAT VM or custom routing)
+#   - Secondary IP ranges for Pods & Services (if using GKE)
+#
+# To use it:
+# 1. Configure a Crossplane GCP provider named `gcp-provider-config`
+# 2. Replace placeholders:
+#       "<SUBNET_NAME>"        → name of the subnetwork
+#       "<IP_CIDR_RANGE>"      → primary CIDR for the subnet
+#       "<VPC_NETWORK_NAME>"   → name of the VPC network
+#       "<GCP_REGION>"         → region like "us-central1"
+#       "<PODS_CIDR_RANGE>"    → optional CIDR for GKE Pods
+#       "<SERVICES_CIDR_RANGE>"→ optional CIDR for GKE Services
+# 3. Apply:
+#      kubectl apply -f nat-subnet-example.yaml
+
+apiVersion: compute.gcp.crossplane.io/v1beta1
+kind: Subnetwork
+metadata:
+  name: "<SUBNET_NAME>"             # e.g. nat-subnet
+spec:
+  forProvider:
+    # Primary CIDR range for this subnet
+    ipCidrRange: "<IP_CIDR_RANGE>"  # e.g. 10.1.0.0/24
+
+    # Reference to the parent VPC network
+    networkRef:
+      name: "<VPC_NETWORK_NAME>"    # e.g. my-vpc-network
+
+    # Region where the subnet will be created
+    region: "<GCP_REGION>"          # e.g. us-central1
+
+    # Optional: Secondary IP ranges (useful for GKE clusters)
+    secondaryIpRanges:
+      - ipCidrRange: "<PODS_CIDR_RANGE>"        # e.g. 10.128.0.0/20
+        rangeName: pods
+      - ipCidrRange: "<SERVICES_CIDR_RANGE>"    # e.g. 172.16.0.0/16
+        rangeName: services
+
+  providerConfigRef:
+    name: gcp-provider-config        # sanitized provider config

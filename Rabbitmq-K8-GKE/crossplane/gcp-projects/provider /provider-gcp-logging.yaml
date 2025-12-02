@@ -1,0 +1,18 @@
+# Crossplane GCP Logging Provider
+# This installs the Crossplane provider that manages Google Cloud Logging
+# resources (sinks, buckets, exclusions, etc.).
+#
+# SAFE FOR PUBLIC USE — no credentials included.
+#
+# To use:
+# 1. Ensure Crossplane is installed in your cluster
+# 2. Apply this provider definition:
+#       kubectl apply -f provider-gcp-logging-example.yaml
+# 3. Create a ProviderConfig with credentials (DO NOT commit credentials)
+
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-gcp-logging
+spec:
+  package: xpkg.upbound.io/upbound/provider-gcp-logging:v1

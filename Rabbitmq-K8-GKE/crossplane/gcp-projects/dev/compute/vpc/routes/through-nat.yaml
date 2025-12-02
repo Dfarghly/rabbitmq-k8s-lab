@@ -1,0 +1,24 @@
+# Example Crossplane-managed GCP Route.
+# This route sends traffic through a custom NAT VM instance.
+#
+# This file is OPTIONAL and NOT required for the local Kubernetes lab (kind).
+# It is only relevant for users deploying on GCP with Crossplane.
+#
+# To use it:
+# 1. Configure a Crossplane GCP provider named `gcp-provider-config`
+# 2. Replace placeholders:
+#      "<VPC_NETWORK_NAME>" → your VPC network name
+#      "<GCP_PROJECT_ID>"   → your GCP project ID
+#      "<GCP_ZONE>"         → zone where your NAT VM lives
+#      "<NAT_VM_NAME>"      → name of the NAT instance (e.g. nat-vm)
+# 3. Apply the manifest:
+#      kubectl apply -f route-through-nat-example.yaml
+
+apiVersion: compute.gcp.upbound.io/v1beta1
+kind: Route
+metadata:
+  name: through-nat
+spec:
+  forProvider:
+    # VPC network where this route will be created
+    network: "<VPC_NETWORK_NAME>"      # e.g. my-vpc

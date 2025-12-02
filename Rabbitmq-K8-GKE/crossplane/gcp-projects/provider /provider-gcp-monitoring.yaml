@@ -1,0 +1,19 @@
+# Crossplane GCP Monitoring Provider
+# This installs the Crossplane provider that manages Google Cloud Monitoring
+# resources (dashboards, alerting policies, uptime checks, etc.).
+#
+# SAFE FOR PUBLIC USE — contains no credentials.
+#
+# Usage:
+# 1. Ensure Crossplane is installed in your Kubernetes cluster
+# 2. Apply this file:
+#       kubectl apply -f provider-gcp-monitoring-example.yaml
+# 3. Create a ProviderConfig with your service account JSON
+#    (DO NOT commit real credentials to GitHub)
+
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-gcp-monitoring
+spec:
+  package: xpkg.upbound.io/upbound/provider-gcp-monitoring:v1

@@ -1,0 +1,19 @@
+# Crossplane GCP Storage Provider
+# This installs the Crossplane provider that manages Google Cloud Storage
+# resources (buckets, IAM bindings, bucket configs, lifecycle rules, etc.).
+#
+# SAFE FOR PUBLIC USE — contains no credentials.
+#
+# Usage:
+# 1. Ensure Crossplane is installed in your Kubernetes cluster.
+# 2. Apply this provider definition:
+#       kubectl apply -f provider-gcp-storage-example.yaml
+# 3. Create a ProviderConfig that references your service account JSON.
+#    IMPORTANT: Do NOT commit real credentials to GitHub.
+
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-gcp-storage
+spec:
+  package: xpkg.upbound.io/upbound/provider-gcp-storage:v1

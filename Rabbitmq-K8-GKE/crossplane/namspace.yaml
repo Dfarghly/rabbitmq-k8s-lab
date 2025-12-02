@@ -1,0 +1,10 @@
+# Namespace for the RabbitMQ operator, RabbitMQ cluster, and related resources.
+# SAFE FOR PUBLIC USE.
+#
+# Apply with:
+#   kubectl apply -f namespace-rabbitmq.yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rabbitmq-system

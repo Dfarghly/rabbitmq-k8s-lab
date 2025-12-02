@@ -1,0 +1,19 @@
+# Crossplane GCP Provider (General)
+# This installs the Crossplane provider that manages a broad set of Google Cloud
+# Platform resources (IAM, networking, compute, storage, pubsub, etc.).
+#
+# SAFE FOR PUBLIC USE — no credentials are included in this file.
+#
+# Usage:
+# 1. Make sure Crossplane is installed in your cluster.
+# 2. Apply this provider:
+#       kubectl apply -f provider-gcp-example.yaml
+# 3. Create a ProviderConfig with your service account JSON.
+#    (Do NOT commit real credentials to GitHub.)
+
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-gcp
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/provider-gcp:v0.22.0

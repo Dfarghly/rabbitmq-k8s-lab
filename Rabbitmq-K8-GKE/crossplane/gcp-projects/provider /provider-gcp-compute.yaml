@@ -1,0 +1,18 @@
+# Crossplane GCP Compute Provider
+# This installs the Crossplane provider for managing GCP Compute resources
+# (e.g., VPCs, subnets, routes, NAT VMs, firewalls).
+#
+# SAFE FOR PUBLIC USE — no credentials are included here.
+#
+# To use it:
+# 1. Make sure Crossplane is installed in your cluster
+# 2. Apply this provider:
+#       kubectl apply -f provider-gcp-compute-example.yaml
+# 3. Then create a ProviderConfig secret separately (NOT committed to GitHub)
+
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-gcp-compute
+spec:
+  package: xpkg.upbound.io/upbound/provider-gcp-compute:v1.8.3

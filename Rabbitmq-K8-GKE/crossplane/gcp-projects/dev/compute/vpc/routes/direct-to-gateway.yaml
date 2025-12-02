@@ -1,0 +1,33 @@
+# Example Crossplane-managed GCP Route.
+# This route sends traffic for 0.0.0.0/1 toward the default internet gateway.
+# Typically used for NAT gateway or custom routing setups.
+#
+# This file is OPTIONAL and NOT required for the local Kubernetes lab (kind).
+#
+# To use it:
+# 1. Configure a Crossplane GCP provider named `gcp-provider-config`
+# 2. Replace the placeholders:
+#      "<VPC_NETWORK_NAME>" → your VPC network (e.g. my-vpc-network)
+#      "<GCP_PROJECT_ID>"   → your project ID (e.g. my-gcp-project)
+# 3. Apply the manifest:
+#      kubectl apply -f route-direct-to-gateway-example.yaml
+
+apiVersion: compute.gcp.upbound.io/v1beta1
+kind: Route
+metadata:
+  name: direct-to-gateway
+spec:
+  forProvider:
+    # The VPC network this route belongs to
+    network: "<VPC_NETWORK_NAME>"   # e.g. my-vpc-network
+
+    # Destination CIDR for this route
+    destRange: "0.0.0.0/1"          # First half of all IP ranges
+
+    priority: 10
+
+    # Next hop internet gateway
+    nextHopGateway: "projects/<GCP_PROJECT_ID>/global/gateways/default-internet-gateway"
+
+  providerConfigRef:
+    name: gcp-provider-config         # sanitized provider config name
