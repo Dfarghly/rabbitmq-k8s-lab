@@ -1,0 +1,48 @@
+# ------------------------------------------------------------
+# prometheus-external-url-configmap-example.yaml
+# ------------------------------------------------------------
+# Example ConfigMap used to configure the public/external URL
+# that Prometheus should use when generating links (e.g. in
+# Alertmanager, UI redirects, etc.).
+#
+# SAFE FOR PUBLIC USE — original domain replaced with a placeholder.
+#
+# ------------------------------------------------------------
+# 📌 HOW THIS IS USED
+# ------------------------------------------------------------
+# Some Prometheus Helm charts / deployments read this key:
+#
+#   data:
+#     prometheus.external-url: https://prom.example.com
+#
+# and pass it to Prometheus via:
+#
+#   --web.external-url=$(PROMETHEUS_EXTERNAL_URL)
+#
+# or similar, so URLs in alerts & UI are correct when behind
+# ingress / reverse proxy.
+#
+# ------------------------------------------------------------
+# 📌 HOW TO USE IN YOUR LAB
+# ------------------------------------------------------------
+#
+# 1. Pick namespace where Prometheus lives, e.g. "monitoring".
+#
+# 2. Set <PROMETHEUS_EXTERNAL_URL> to the URL you expose via
+#    ingress (e.g. https://prometheus.lab.example.com).
+#
+# 3. Apply:
+#      kubectl apply -f prometheus-external-url-configmap-example.yaml
+#
+# 4. Wire this value into your Prometheus deployment/Helm chart
+#    if it supports reading this ConfigMap key.
+#
+# ------------------------------------------------------------
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-external-url
+  namespace: <MONITORING_NAMESPACE>             # e.g. monitoring
+data:
+  prometheus.external-url: <PROMETHEUS_EXTERNAL_URL>   # e.g. https://prometheus.lab.example.com

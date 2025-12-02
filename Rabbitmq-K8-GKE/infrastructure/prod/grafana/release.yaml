@@ -1,0 +1,68 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: grafana2
+  namespace: default
+spec:
+  targetNamespace: default
+  releaseName: grafana2
+  install:
+    createNamespace: true
+    timeout: 600s 
+  interval: 1m   
+  chart:
+    spec:
+      chart: ./charts/grafana
+      version: "8.3.4"
+      sourceRef:
+        kind: GitRepository
+        name: grafana
+        namespace: flux-system
+      valuesFiles:
+        - ./charts/grafana/values.yaml  
+  values:
+    image:
+      registry: us-central1-docker.pkg.dev
+      repository: leadpage-dev/images/grafana
+      tag: "11.1.0"
+    admin:
+      existingSecret: "grafana-admin-credentials"
+    service: 
+      annotations: 
+        cloud.google.com/neg: '{"ingress": true}'
+    assertNoLeakedSecrets: false
+    persistence:
+      type: pvc
+      enabled: true
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+      existingClaim: "grafana-pvc"
+      finalizers:
+        - kubernetes.io/pvc-protection
+    grafana.ini:
+      log:
+        level: debug
+      auth.anonymous:
+        enabled: "false"
+        org_name: "Leadpages"
+      auth.basic:
+        enable: "false"
+      oauth_auto_login: "false"
+      auth.google:
+        enabled: "true"
+        allowed_domains: "leadpages.com"
+        allow_sign_up: "true"
+        client_id: "233365171690-rlm7fq26u9jkn6vvul6vh8vo708ulc2t.apps.googleusercontent.com"
+        client_secret: "YDdv2tQX3RvXFrD_L78y_Aoj"
+      server:
+        domain: "grafana-prod.leadpages.io"
+        root_url: "https://grafana-prod.leadpages.io"
+        protocol: "http"
+      users:
+        auth_assign_org: "true"
+        allow_sign_up: "true"
+        allow_org_create: "false"
+        auto_assign_org_role: "Editor"
+    deploymentStrategy:
+      type: Recreate

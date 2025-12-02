@@ -1,14 +1,13 @@
 # ------------------------------------------------------------
 # ingress-nginx-values.yaml
 # ------------------------------------------------------------
-# Helm values for ingress-nginx in the RabbitMQ K8s lab.
+# This file contains the Helm values used to install ingress-nginx
+# in the RabbitMQ Kubernetes Lab environment.
 #
-# This file combines:
-#   - Internal FluxCD HelmRelease configuration
-#   - Lab-specific tweaks (metrics, replica count, tcp services)
-#   - Optional custom image + static LoadBalancer IP
-#
-# SAFE FOR PUBLIC USE — internal registry and IPs replaced with placeholders.
+# It replaces an internal FluxCD HelmRelease:
+#   - No FluxCD required
+#   - No GitRepository references
+#   - Safe for public GitHub usage
 #
 # ------------------------------------------------------------
 # 📌 HOW TO INSTALL INGRESS-NGINX IN THIS LAB
@@ -30,35 +29,11 @@
 #      kubectl get pods -n ingress-nginx
 #      kubectl get svc -n ingress-nginx
 #
-# NOTE:
-# - If you do NOT need a custom image or static IP, you can remove or comment
-#   out the `controller.image` and/or `controller.service.loadBalancerIP`
-#   sections below.
-#
 # ------------------------------------------------------------
 # Controller configuration
 # ------------------------------------------------------------
 
 controller:
-  # Optional: override the ingress-nginx image (e.g., custom build or local registry)
-  image:
-    # Example: official image
-    #   registry: registry.k8s.io
-    #   image: ingress-nginx/controller
-    #   tag: "v1.10.0"
-    #
-    # Replace these placeholders with your own registry/image/tag if needed:
-    registry: <INGRESS_NGINX_REGISTRY>          # e.g. registry.k8s.io
-    image: <INGRESS_NGINX_IMAGE_PATH>           # e.g. ingress-nginx/controller
-    tag: "<INGRESS_NGINX_TAG>"                  # e.g. v1.10.0
-    # digest is optional; omit it in most labs
-    # digest: "<IMAGE_DIGEST>"
-
-  # Optional: assign a static external IP (GKE LoadBalancer, etc.)
-  # If you don't have / need a reserved IP, you can remove this section.
-  service:
-    loadBalancerIP: "<STATIC_LOADBALANCER_IP>"  # e.g. 203.0.113.10
-
   allowSnippetAnnotations: true
 
   metrics:
@@ -88,6 +63,7 @@ defaultBackend:
 
 # ------------------------------------------------------------
 # TCP Forwarding
+# Useful when exposing non-HTTP services via ingress-nginx
 # ------------------------------------------------------------
 tcp:
   "1725": "default/logstash:1725"

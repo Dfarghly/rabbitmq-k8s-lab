@@ -1,0 +1,32 @@
+# ------------------------------------------------------------
+# rabbitmq-externalname-services-example.yaml
+# ------------------------------------------------------------
+# Example ExternalName Services for pointing Kubernetes workloads
+# to external RabbitMQ instances.
+#
+# SAFE FOR PUBLIC USE — NO product names, NO internal names, NO brands.
+#
+# Replace <EXTERNAL_RABBITMQ_FQDN> with the actual DNS hostname of your
+# external RabbitMQ endpoint.
+#
+# ------------------------------------------------------------
+# 📌 HOW TO USE
+# ------------------------------------------------------------
+#
+# 1. Set externalName to the DNS of your external RabbitMQ node.
+#    Example:
+#      externalName: rabbitmq.mycompany.internal
+#
+# 2. Apply:
+#      kubectl apply -f rabbitmq-externalname-services-example.yaml
+#
+# ------------------------------------------------------------
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-external
+  namespace: rabbitmq-system
+spec:
+  type: ExternalName
+  externalName: <EXTERNAL_RABBITMQ_FQDN>   # e.g. rabbitmq.external.domain

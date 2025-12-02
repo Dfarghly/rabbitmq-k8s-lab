@@ -1,0 +1,103 @@
+# ------------------------------------------------------------
+# oauth2-proxy-values.yaml
+# ------------------------------------------------------------
+# Helm values for oauth2-proxy in the RabbitMQ / monitoring lab.
+#
+# This file replaces internal FluxCD HelmRelease configuration and
+# is SAFE FOR PUBLIC USE — all internal domains and secrets have
+# been replaced with placeholders.
+#
+# ------------------------------------------------------------
+# 📌 HOW TO INSTALL OAUTH2-PROXY IN THIS LAB
+# ------------------------------------------------------------
+#
+# 1. Add the official oauth2-proxy Helm repo:
+#      helm repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
+#      helm repo update
+#
+# 2. Ensure the target namespace exists (ingress-nginx in this example):
+#      kubectl create namespace ingress-nginx --dry-run=client -o yaml | kubectl apply -f -
+#
+# 3. (RECOMMENDED) Create a Secret for client ID/secret/cookie instead of
+#    placing real secrets directly in values.yaml.
+#    Example:
+#      kubectl create secret generic oauth2-proxy-secret \
+#        -n ingress-nginx \
+#        --from-literal=client-id="<OAUTH2_CLIENT_ID>" \
+#        --from-literal=client-secret="<OAUTH2_CLIENT_SECRET>" \
+#        --from-literal=cookie-secret="<OAUTH2_COOKIE_SECRET>"
+#
+#    Then wire those into extraEnv / envFrom in values.
+#
+# 4. Replace the placeholders in this file:
+#      - <OAUTH2_PROXY_TAG>
+#      - <TLS_SECRET_NAME>
+#      - <OAUTH2_CLIENT_ID>
+#      - <OAUTH2_CLIENT_SECRET>
+#      - <OAUTH2_COOKIE_SECRET>
+#      - <HOST_*>
+#
+# 5. Install:
+#      helm upgrade --install oauth2-proxy oauth2-proxy/oauth2-proxy \
+#        -n ingress-nginx \
+#        -f infrastructure/base/oauth2-proxy/oauth2-proxy-values.yaml
+#
+# 6. Verify:
+#      kubectl get pods -n ingress-nginx
+#
+# ------------------------------------------------------------
+# Basic deployment settings
+# ------------------------------------------------------------
+
+replicaCount: 2
+
+image:
+  repository: quay.io/oauth2-proxy/oauth2-proxy
+  tag: "<OAUTH2_PROXY_TAG>"                # e.g. v7.6.0
+
+# ------------------------------------------------------------
+# Ingress configuration
+# ------------------------------------------------------------
+
+ingress:
+  enabled: true
+  # TLS secret used by the ingress for all listed hosts
+  certSecretName: <TLS_SECRET_NAME>        # e.g. wildcard-tls-secret
+
+  # List of hosts that should be routed through oauth2-proxy.
+  # Each "host" will typically be the same host used by your app ingresses
+  # when they reference oauth2-proxy for auth.
+  hosts:
+    - host: <HOST_ALERTS>                  # e.g. alerts.lab.example.com
+    - host: <HOST_BLACKBOX>                # e.g. blackbox.lab.example.com
+    - host: <HOST_GRAFANA>                 # e.g. grafana.lab.example.com
+    - host: <HOST_GRAFANA_OLD>             # optional legacy host
+    - host: <HOST_KIBANA_1>                # e.g. kibana1.lab.example.com
+    - host: <HOST_KIBANA_2>                # e.g. kibana2.lab.example.com
+    - host: <HOST_PROM_1>                  # e.g. prom.lab.example.com
+    - host: <HOST_PROM_2>                  # optional second Prometheus host
+    - host: <HOST_RABBIT_1>                # e.g. rabbit1.lab.example.com
+    - host: <HOST_RABBIT_2>                # e.g. rabbit2.lab.example.com
+    - host: <HOST_RABBIT_3>                # e.g. rabbit3.lab.example.com
+    - host: <HOST_ALERTS_ALT>              # alternate alerts domain
+    - host: <HOST_RABBIT_K8_1>             # e.g. rabbitmq-k8-1.lab.example.com
+    - host: <HOST_RABBIT_K8_2>             # e.g. rabbitmq-k8-2.lab.example.com
+
+# ------------------------------------------------------------
+# OAuth2 client configuration
+# ------------------------------------------------------------
+# IMPORTANT:
+# - DO NOT commit real client IDs, secrets, or cookie secrets to Git.
+# - Use these as placeholders only. Load real values from Secrets in a
+#   real environment.
+# ------------------------------------------------------------
+
+secret:
+  # Example placeholders. Replace at deploy time, or prefer using
+  # Kubernetes Secrets with envFrom.
+  clientID: "<OAUTH2_CLIENT_ID>"
+  clientSecret: "<OAUTH2_CLIENT_SECRET>"
+
+  # 16, 24, or 32-byte base64-encoded secret for encrypting cookies
+  # e.g. `python -c 'import os,base64; print(base64.b64encode(os.urandom(32)).decode())'`
+  clientCookie: "<OAUTH2_COOKIE_SECRET>"

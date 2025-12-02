@@ -1,0 +1,76 @@
+# ------------------------------------------------------------
+# elasticsearch-ingress-example.yaml
+# ------------------------------------------------------------
+# Example ingress for exposing the Elasticsearch HTTP API/UI
+# behind oauth2-proxy using ingress-nginx.
+#
+# SAFE FOR PUBLIC USE — no internal domains or cert names.
+#
+# ------------------------------------------------------------
+# 📌 HOW TO USE
+# ------------------------------------------------------------
+#
+# 1. Ensure:
+#      - ingress-nginx is installed
+#      - oauth2-proxy is configured & running
+#      - Elasticsearch Service exists (e.g. Service "elasticsearch", port 9200)
+#
+# 2. Replace placeholders:
+#      <ELASTICSEARCH_NAMESPACE>   → namespace where ES runs (e.g. eslogs)
+#      <ELASTICSEARCH_HOST_1>      → domain for ES (e.g. es.lab.example.com)
+#      <ELASTICSEARCH_HOST_2>      → (optional) second domain
+#      <ELASTICSEARCH_SERVICE>     → ES service name (e.g. elasticsearch)
+#      <ELASTICSEARCH_PORT>        → ES service port (e.g. 9200)
+#      <TLS_SECRET_NAME>           → TLS certificate secret
+#
+# 3. Apply:
+#      kubectl apply -f elasticsearch-ingress-example.yaml
+#
+# ------------------------------------------------------------
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: elasticsearch-ingress
+  namespace: <ELASTICSEARCH_NAMESPACE>          # e.g. eslogs
+  labels:
+    app: elasticsearch-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+
+    # Authentication via oauth2-proxy
+    nginx.ingress.kubernetes.io/auth-signin: https://$host/oauth2/start
+    nginx.ingress.kubernetes.io/auth-url: https://$host/oauth2/auth
+
+    # Increase body size limit
+    nginx.ingress.kubernetes.io/proxy-body-size: 10M
+
+spec:
+  rules:
+    - host: <ELASTICSEARCH_HOST_1>              # e.g. es.lab.example.com
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: <ELASTICSEARCH_SERVICE>   # e.g. elasticsearch
+                port:
+                  number: <ELASTICSEARCH_PORT>  # e.g. 9200
+
+    - host: <ELASTICSEARCH_HOST_2>              # optional second hostname
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: <ELASTICSEARCH_SERVICE>
+                port:
+                  number: <ELASTICSEARCH_PORT>
+
+  tls:
+    - hosts:
+        - <ELASTICSEARCH_HOST_1>
+        - <ELASTICSEARCH_HOST_2>
+      secretName: <TLS_SECRET_NAME>             # e.g. es-tls

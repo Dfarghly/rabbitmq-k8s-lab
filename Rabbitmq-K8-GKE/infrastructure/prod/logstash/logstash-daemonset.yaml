@@ -1,0 +1,117 @@
+# ------------------------------------------------------------
+# logstash-daemonset-example.yaml
+# ------------------------------------------------------------
+# Example DaemonSet for Logstash that tails node logs and ships them
+# to Elasticsearch.
+#
+# SAFE FOR PUBLIC USE — internal image registry removed, namespace
+# and image are placeholders.
+#
+# ------------------------------------------------------------
+# 📌 HOW THIS WORKS
+# ------------------------------------------------------------
+# - Runs one Logstash pod per node (DaemonSet)
+# - Mounts host paths where container & pod logs live:
+#     <CONTAINER_LOG_PATH>        # e.g. /var/log/containers (containerd)
+#     <POD_LOG_PATH>              # e.g. /var/log/pods
+#     <DOCKER_CONTAINER_LOG_PATH> # e.g. /var/lib/docker/containers (Docker engines)
+# - Reads the Elasticsearch host from a ConfigMap key:
+#     ConfigMap: logstash
+#     Key:       elasticsearch-host
+#
+# You must supply your own:
+#   - Logstash image
+#   - Logstash config (logstash.conf)
+#   - ConfigMap with `elasticsearch-host`
+#
+# ------------------------------------------------------------
+# 📌 HOW TO USE IN YOUR LAB
+# ------------------------------------------------------------
+#
+# 1. Choose a namespace (e.g. "logging") and create it:
+#      kubectl create namespace logging --dry-run=client -o yaml | kubectl apply -f -
+#
+# 2. Create a ConfigMap for the ES host:
+#      apiVersion: v1
+#      kind: ConfigMap
+#      metadata:
+#        name: logstash
+#        namespace: logging
+#      data:
+#        elasticsearch-host: "http://elasticsearch.logging.svc.cluster.local:9200"
+#
+# 3. Choose a Logstash image that includes /etc/logstash/logstash.conf:
+#      image: docker.elastic.co/logstash/logstash:8.14.0
+#
+# 4. Adjust tolerations and hostPath paths if your cluster differs.
+#
+# 5. Apply:
+#      kubectl apply -f logstash-daemonset-example.yaml
+#
+# ------------------------------------------------------------
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: logstash
+  namespace: <LOGSTASH_NAMESPACE>        # e.g. logging
+  labels:
+    app: logstash
+    component: logstash
+spec:
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+
+  selector:
+    matchLabels:
+      app: logstash
+
+  template:
+    metadata:
+      name: logstash
+      labels:
+        app: logstash
+
+    spec:
+      terminationGracePeriodSeconds: 30
+
+      containers:
+        - name: logstash
+          image: <LOGSTASH_IMAGE>        # e.g. docker.elastic.co/logstash/logstash:8.14.0
+
+          env:
+            - name: ES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: logstash
+                  key: elasticsearch-host
+
+          args:
+            - -f
+            - /etc/logstash/logstash.conf
+
+          volumeMounts:
+            - name: container-log-volume
+              mountPath: <CONTAINER_LOG_PATH>        # e.g. /var/log/containers
+              readOnly: true
+
+            - name: pod-log-volume
+              mountPath: <POD_LOG_PATH>              # e.g. /var/log/pods
+              readOnly: true
+
+            - name: docker-containers
+              mountPath: <DOCKER_CONTAINER_LOG_PATH> # e.g. /var/lib/docker/containers
+              readOnly: true
+
+      volumes:
+        - name: container-log-volume
+          hostPath:
+            path: <CONTAINER_LOG_PATH>               # same value as above
+
+        - name: pod-log-volume
+          hostPath:
+            path: <POD_LOG_PATH>
+
+        - name: docker-conta

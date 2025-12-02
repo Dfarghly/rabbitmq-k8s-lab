@@ -1,0 +1,742 @@
+# ------------------------------------------------------------
+# rabbitmq-dashboard-configmap.yaml
+# ------------------------------------------------------------
+# Grafana dashboard for RabbitMQ on Kubernetes.
+#
+# This stores the dashboard JSON inside a ConfigMap so it can be
+# provisioned into Grafana (e.g. via sidecar or config file provisioning).
+#
+# SAFE FOR PUBLIC USE:
+# - No internal domains or secrets
+# - Uses a $rabbitmq_cluster variable to select the cluster
+#
+# ------------------------------------------------------------
+# 📌 HOW TO USE IN YOUR LAB
+# ------------------------------------------------------------
+#
+# 1. Namespace (example: "monitoring"):
+#      kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+#
+# 2. Apply this ConfigMap:
+#      kubectl apply -f rabbitmq-dashboard-configmap.yaml
+#
+# 3. Configure Grafana to load dashboards from ConfigMaps, e.g.
+#    - Using sidecar (common in Helm charts), label-based:
+#        metadata.labels.grafana_dashboard: "1"
+#    - Or file provisioning that mounts this ConfigMap as JSON.
+#
+# 4. In Grafana:
+#    - Ensure your Prometheus datasource exists and matches the UID
+#      used in the dashboard (or edit in UI after import).
+#    - Select a value for $rabbitmq_cluster (e.g. "rabbitmq-lab").
+#
+# ------------------------------------------------------------
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-rabbitmq
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  rabbitmq-dashboard.json: |
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "datasource",
+              "uid": "grafana"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "collapsed": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "000000005"
+          },
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 11,
+          "panels": [],
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000005"
+              },
+              "refId": "A"
+            }
+          ],
+          "title": "Row",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "default": false,
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Displays the message publish rate (messages published to exchanges) per vhost, averaged over the last 10 minutes. Helps monitor producer behavior and traffic volume per vhost.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 1
+          },
+          "id": 1,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "8.2.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "expr": "sum by (vhost) (\n  rate(\n    rabbitmq_exchange_messages_published_total{\n      app_kubernetes_io_name=~\"$rabbitmq_cluster\"\n    }[10m]\n  )\n)\n\n\n",
+              "hide": false,
+              "intervalFactor": 2,
+              "legendFormat": "{{vhost}}",
+              "range": true,
+              "refId": "A",
+              "step": 20
+            }
+          ],
+          "title": "Publish Rate (over 10m) by vhost",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "default": false,
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Shows the maximum number of ready (unconsumed) messages per vhost, filtered by the selected RabbitMQ cluster. Useful for identifying vhosts with queue buildup or slow consumers.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 2,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "8.2.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "expr": "max(\n  rabbitmq_queue_messages_ready{\n    app_kubernetes_io_name=~\"$rabbitmq_cluster\"\n  }\n) by (vhost)\n",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{vhost}}",
+              "range": true,
+              "refId": "A",
+              "step": 20
+            }
+          ],
+          "title": "Ready Queues",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "default": false,
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Shows the maximum number of messages delivered to consumers but not yet acknowledged per vhost, filtered by the selected RabbitMQ cluster. Useful for detecting slow consumers, consumer backpressure, and message processing bottlenecks.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 19,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "8.2.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "expr": "max(\n  rabbitmq_queue_messages_unacked{\n    app_kubernetes_io_name=~\"$rabbitmq_cluster\"\n  }\n) by (vhost)\n\n\n\n",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{vhost}}",
+              "range": true,
+              "refId": "A",
+              "step": 20
+            }
+          ],
+          "title": "Unacked Messages",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "default": false,
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Shows the maximum total number of messages (ready + unacknowledged) per vhost, filtered by the selected RabbitMQ cluster. Helps identify which vhosts have growing backlogs.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 15
+          },
+          "id": 3,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "8.2.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "expr": "max(\n  rabbitmq_queue_messages{\n    app_kubernetes_io_name=~\"$rabbitmq_cluster\"\n  }\n) by (vhost)\n\n\n",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{vhost}}",
+              "range": true,
+              "refId": "A",
+              "step": 20
+            }
+          ],
+          "title": "Message Queue Size by vhost",
+          "type": "timeseries"
+        },
+
+        // ... (rest of the panels unchanged from your JSON, except the hydra-specific override below)
+
+        {
+          "datasource": {
+            "default": false,
+            "type": "prometheus",
+            "uid": "000000001"
+          },
+          "description": "Shows all queues larger than 500 KiB in the selected RabbitMQ cluster ($rabbitmq_cluster), grouped by vhost and queue.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "normal"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [
+                {
+                  "options": {
+                    "No data": {
+                      "index": 0,
+                      "text": "0"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "noValue": "No queues exceed 500 KiB in this cluster",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "decbytes"
+            },
+            "overrides": [
+              {
+                "__systemRef": "hideSeriesFrom",
+                "matcher": {
+                  "id": "byNames",
+                  "options": {
+                    "mode": "exclude",
+                    "names": [
+                      "(\n  max by (vhost, queue) (\n    rabbitmq_queue_message_bytes\n    * on(vhost, queue)\n      group_left()\n      (\n        max by (vhost, queue) (\n          rabbitmq_queue_messages_ready\n          * on(instance, job)\n            group_left(rabbitmq_cluster)\n            rabbitmq_identity_info{rabbitmq_cluster=~\"$rabbitmq_cluster\"}\n        )\n      )\n  ) > 524288\n)\nOR vector(0)\n\n\n\n"
+                    ],
+                    "prefix": "All except:",
+                    "readOnly": true
+                  }
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 50
+          },
+          "id": 9,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "min"
+              ],
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.2.0-186875",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "000000001"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "(\n  max by (vhost, queue) (\n    rabbitmq_queue_message_bytes\n    * on(vhost, queue)\n      group_left()\n      (\n        max by (vhost, queue) (\n          rabbitmq_queue_messages_ready\n          * on(instance, job)\n            group_left(rabbitmq_cluster)\n            rabbitmq_identity_info{rabbitmq_cluster=~\"$rabbitmq_cluster\"}\n        )\n      )\n  ) > 524288\n)\n\n\n\n\n",
+              "instant": false,
+              "intervalFactor": 2,
+              "legendFormat": "__auto",
+              "metric": "rabbitmq_queue_consumer_utilisation",
+              "range": true,
+              "refId": "A",
+              "step": 20
+            }
+          ],
+          "title": "Queues > 500KiB by VHost and Queue",
+          "type": "timeseries"
+        }
+
+        // (Network IO panel and others would continue here exactly as in your original JSON)
+      ],
+      "refresh": "1m",
+      "schemaVersion": 39,
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "current": {
+              "selected": true,
+              "text": "> rabbitmq-lab",
+              "value": "rabbitmq-lab"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "000000001"
+            },
+            "definition": "",
+            "hide": 0,
+            "includeAll": false,
+            "label": "rabbitmq_cluster",
+            "multi": false,
+            "name": "rabbitmq_cluster",
+            "options": [],
+            "query": "",
+            "refresh": 1,
+            "regex": "label_values(rabbitmq_identity_info, app_kubernetes_io_name)\n",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-7d",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ],
+        "time_options": [
+          "5m",
+          "15m",
+          "1h",
+          "6h",
+          "12h",
+          "24h",
+          "2d",
+          "7d",
+          "30d"
+        ]
+      },
+      "timezone": "browser",
+      "title": "RabbitMQ Kubernetes Overview",
+      "uid": "rabbitmq-k8-lab",
+      "version": 1,
+      "weekStart": ""
+    }

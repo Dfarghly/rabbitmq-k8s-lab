@@ -1,0 +1,50 @@
+# ------------------------------------------------------------
+# grafana-pv-example.yaml
+# ------------------------------------------------------------
+# Example PersistentVolume for Grafana backed by a GCE Persistent Disk.
+#
+# This is ONLY applicable when running on GKE with an existing
+# GCE PD. It is NOT required for the local kind-based lab.
+#
+# ------------------------------------------------------------
+# 📌 HOW TO USE (GKE ONLY)
+# ------------------------------------------------------------
+#
+# 1. Create a GCE Persistent Disk in your GCP project, for example:
+#      gcloud compute disks create <GRAFANA_DISK_NAME> \
+#        --size=10Gi \
+#        --zone=<GCP_ZONE> \
+#        --type=pd-standard
+#
+# 2. Replace the placeholders below:
+#      - <GRAFANA_PV_NAME>   (Kubernetes PV name)
+#      - <GRAFANA_DISK_NAME> (GCE PD name)
+#
+# 3. Apply this manifest:
+#      kubectl apply -f grafana-pv-example.yaml
+#
+# 4. In your Grafana Helm values, reference this persistent volume
+#    via a PersistentVolumeClaim that matches this PV's properties
+#    (e.g. size: 10Gi, accessModes: [ReadWriteOnce]).
+#
+# NOTE:
+# - For local kind/minikube labs, you will typically use a StorageClass
+#   and PVC or hostPath instead of a GCE PD-backed PV.
+#
+# ------------------------------------------------------------
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: <GRAFANA_PV_NAME>          # e.g. grafana-data-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+
+  # GKE-specific: bind to an existing GCE Persistent Disk
+  gcePersistentDisk:
+    pdName: <GRAFANA_DISK_NAME>    # e.g. grafana-data-gke-us-central1-c
+    fsType: ext4

@@ -1,0 +1,81 @@
+# ------------------------------------------------------------
+# clusterexternalsecret-lpadmin-rmq-user-example.yaml
+# ------------------------------------------------------------
+# Example ClusterExternalSecret for syncing a RabbitMQ admin user
+# (lpadmin-like user) from Google Cloud Secret Manager into the
+# `rabbitmq-system` namespace.
+#
+# This uses:
+#   - External Secrets Operator (ESO)
+#   - A ClusterSecretStore (e.g. gcp-secret-store-example)
+#
+# SAFE FOR PUBLIC USE — all project- and env-specific names are placeholders.
+#
+# ------------------------------------------------------------
+# 📌 HOW TO USE IN YOUR LAB
+# ------------------------------------------------------------
+#
+# 1. Ensure External Secrets Operator is installed.
+#
+# 2. Create a ClusterSecretStore for GCP Secret Manager, e.g.:
+#      clustersecretstore-gcpsm-example.yaml
+#    with:
+#      metadata.name: gcp-secret-store-example
+#
+# 3. In Google Secret Manager, create two secrets:
+#      - <SM_RMQ_ADMIN_USERNAME_KEY>   (e.g. LAB_RMQ_ADMIN_USERNAME)
+#      - <SM_RMQ_ADMIN_PASSWORD_KEY>   (e.g. LAB_RMQ_ADMIN_PASSWORD)
+#
+# 4. Replace the placeholder values below:
+#      - <CLUSTER_SECRET_STORE_NAME>
+#      - <SM_RMQ_ADMIN_USERNAME_KEY>
+#      - <SM_RMQ_ADMIN_PASSWORD_KEY>
+#
+# 5. Apply:
+#      kubectl apply -f clusterexternalsecret-lpadmin-rmq-user-example.yaml
+#
+# 6. ESO will create a Secret named `lpadmin-rmq-user` in the
+#    `rabbitmq-system` namespace with keys:
+#      - username
+#      - password
+#
+# ------------------------------------------------------------
+
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterExternalSecret
+metadata:
+  name: lpadmin-rmq-user-example
+spec:
+  # Name of the ExternalSecret that will be created in the target namespaces
+  externalSecretName: "lpadmin-rmq-user"
+
+  # Selects namespaces by label; here we match the rabbitmq-system namespace
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: rabbitmq-system
+
+  externalSecretSpec:
+    secretStoreRef:
+      # Must match your ClusterSecretStore (e.g. gcp-secret-store-example)
+      name: <CLUSTER_SECRET_STORE_NAME>         # e.g. gcp-secret-store-example
+      kind: ClusterSecretStore
+
+    refreshInterval: "1m"
+
+    target:
+      name: lpadmin-rmq-user
+      creationPolicy: Owner
+      deletionPolicy: Retain
+
+    data:
+      - secretKey: username
+        remoteRef:
+          # Secret Manager key for the RabbitMQ admin username
+          key: <SM_RMQ_ADMIN_USERNAME_KEY>      # e.g. LAB_RMQ_ADMIN_USERNAME
+          version: latest
+
+      - secretKey: password
+        remoteRef:
+          # Secret Manager key for the RabbitMQ admin password
+          key: <SM_RMQ_ADMIN_PASSWORD_KEY>      # e.g. LAB_RMQ_ADMIN_PASSWORD
+          version: latest

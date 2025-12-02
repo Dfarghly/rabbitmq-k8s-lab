@@ -1,0 +1,56 @@
+# ------------------------------------------------------------
+# grafana-pvc-example.yaml
+# ------------------------------------------------------------
+# Example PersistentVolumeClaim for Grafana.
+#
+# This PVC binds to a specific PersistentVolume using:
+#   storageClassName: ""
+#   volumeName: <GRAFANA_PV_NAME>
+#
+# This pattern is ONLY required when:
+#   - Running on GKE
+#   - Using a manually created GCE Persistent Disk PV
+#
+# For the local kind-based lab:
+#   ✔ You DO NOT need this PVC
+#   ✔ Instead, use dynamic provisioning or hostPath volumes
+#
+# ------------------------------------------------------------
+# 📌 HOW TO USE (GKE ONLY)
+# ------------------------------------------------------------
+#
+# 1. Ensure the matching PV exists:
+#      grafana-pv-example.yaml
+#      (with the same <GRAFANA_PV_NAME>)
+#
+# 2. Replace placeholders:
+#      - <GRAFANA_PV_NAME>   → the PV name you used earlier
+#      - <GRAFANA_NAMESPACE> → e.g. "default" or "monitoring"
+#
+# 3. Apply:
+#      kubectl apply -f grafana-pvc-example.yaml
+#
+# 4. In Grafana's Helm values, set:
+#      persistence:
+#        existingClaim: grafana-pvc
+#
+# ------------------------------------------------------------
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+  namespace: <GRAFANA_NAMESPACE>          # e.g. default or monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+
+  resources:
+    requests:
+      storage: 10Gi
+
+  # MUST be empty to bind to a pre-created PV:
+  storageClassName: ""
+
+  # Must match the PV name in grafana-pv-example.yaml
+  volumeName: <GRAFANA_PV_NAME>           # e.g. grafana-data-pv

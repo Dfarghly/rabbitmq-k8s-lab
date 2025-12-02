@@ -1,0 +1,71 @@
+# ------------------------------------------------------------
+# clusterexternalsecret-monitoring-rmq-user-example.yaml
+# ------------------------------------------------------------
+# Example ClusterExternalSecret that syncs a RabbitMQ monitoring user
+# (used by Prometheus / exporters / dashboards) from Google Cloud
+# Secret Manager into the `rabbitmq-system` namespace.
+#
+# SAFE FOR PUBLIC USE — all internal values replaced with placeholders.
+#
+# ------------------------------------------------------------
+# 📌 HOW TO USE IN YOUR LAB
+# ------------------------------------------------------------
+#
+# 1. Ensure External Secrets Operator (ESO) is installed.
+#
+# 2. Ensure you have a ClusterSecretStore pointing at GCP Secret Manager:
+#      metadata.name: gcp-secret-store-example
+#
+# 3. In Google Secret Manager, create:
+#      - <SM_RMQ_MONITOR_USERNAME_KEY>   (e.g. LAB_RMQ_MONITORING_USERNAME)
+#      - <SM_RMQ_MONITOR_PASSWORD_KEY>   (e.g. LAB_RMQ_MONITORING_PASSWORD)
+#
+# 4. Replace placeholders below:
+#      - <CLUSTER_SECRET_STORE_NAME>
+#      - <SM_RMQ_MONITOR_USERNAME_KEY>
+#      - <SM_RMQ_MONITOR_PASSWORD_KEY>
+#
+# 5. Apply:
+#      kubectl apply -f clusterexternalsecret-monitoring-rmq-user-example.yaml
+#
+# ESO will create a Secret:
+#   - name: monitoring-rmq-user
+#   - namespace: rabbitmq-system
+# with keys:
+#   - username
+#   - password
+#
+# ------------------------------------------------------------
+
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterExternalSecret
+metadata:
+  name: monitoring-rmq-user-example
+spec:
+  externalSecretName: "monitoring-rmq-user"
+
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: rabbitmq-system
+
+  externalSecretSpec:
+    secretStoreRef:
+      name: <CLUSTER_SECRET_STORE_NAME>       # e.g. gcp-secret-store-example
+      kind: ClusterSecretStore
+
+    refreshInterval: "1m"
+
+    target:
+      name: monitoring-rmq-user
+      creationPolicy: Owner
+      deletionPolicy: Retain
+
+    data:
+      - secretKey: username
+        remoteRef:
+          key: <SM_RMQ_MONITOR_USERNAME_KEY>  # e.g. LAB_RMQ_MONITORING_USERNAME
+          version: latest
+
+      - secretKey: password
+        remoteRef:
+          key: <SM_RMQ_MONITOR_PASSWORD_KEY>  # e.g

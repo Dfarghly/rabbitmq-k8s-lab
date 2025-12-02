@@ -1,0 +1,185 @@
+# ------------------------------------------------------------
+# eslogs-values.yaml
+# ------------------------------------------------------------
+# Helm values for the "eslogs" Elasticsearch + Kibana stack.
+#
+# This file was converted from an internal FluxCD HelmRelease into
+# a plain values.yaml that can be used directly with `helm upgrade --install`.
+#
+# It assumes you have an Elasticsearch Helm chart in this repo at:
+#   ./elasticsearch
+# (or adjust the helm command below to point at your own chart).
+#
+# ------------------------------------------------------------
+# 📌 HOW TO INSTALL ESLOGS IN THIS LAB
+# ------------------------------------------------------------
+#
+# 1. Create the namespace:
+#      kubectl create namespace eslogs --dry-run=client -o yaml | kubectl apply -f -
+#
+# 2. From the root of your repo (where ./elasticsearch exists), run:
+#      helm upgrade --install eslogs ./elasticsearch \
+#        -n eslogs \
+#        -f infrastructure/prod/eslogs-values.yaml
+#
+# 3. Verify:
+#      kubectl get pods -n eslogs
+#
+# NOTE:
+# - This values file matches a custom Elasticsearch/Kibana chart layout.
+#   If you use a different chart (e.g. Bitnami or Elastic's official chart),
+#   you will need to adapt these keys to that chart's values schema.
+#
+# ------------------------------------------------------------
+# Elasticsearch cluster configuration
+# ------------------------------------------------------------
+
+clusterName: eslogs
+
+client:
+  esJavaOpts: -Xmx1536m -Xms1536m
+  extraEnvs:
+    - name: processors
+      value: "8"
+  replicas: 1
+  resources:
+    limits:
+      cpu: 4
+      memory: 3500Mi
+    requests:
+      cpu: "500m"
+      memory: 800Mi
+
+master:
+  esJavaOpts: -Xmx768m -Xms768m
+  extraEnvs:
+    - name: processors
+      value: "2"
+  replicas: 3
+  resources:
+    limits:
+      cpu: 2
+      memory: 1800Mi
+    requests:
+      cpu: "300m"
+      memory: 1000Mi
+  stateful:
+    size: 15Gi
+
+minimumMasterNodes: 2
+
+curator:
+  age:
+    unit_count: 30
+  hotToWarmMigration:
+    regex: "^g[ac]elogs-.*"
+  schedule: "0 5 * * *"
+
+hotdata:
+  esJavaOpts: -Xmx10g -Xms10g
+  extraEnvs:
+    - name: processors
+      value: "16"
+  replicas: 1
+  resources:
+    limits:
+      cpu: 4
+      memory: 24Gi
+    requests:
+      cpu: 2
+      memory: 20Gi
+  stateful:
+    class: ssd
+    diskCount: 1
+    size: 896Gi
+
+warmdata:
+  esJavaOpts: -Xmx5g -Xms5g
+  extraEnvs:
+    - name: processors
+      value: "16"
+  replicas: 2
+  resources:
+    limits:
+      cpu: 6
+      memory: 12Gi
+    requests:
+      cpu: 2
+      memory: 10Gi
+  stateful:
+    diskCount: 3
+    size: 1333Gi
+
+kibana:
+  ingress:
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/auth-signin: https://$host/oauth2/start
+      nginx.ingress.kubernetes.io/auth-url: https://$host/oauth2/auth
+      nginx.ingress.kubernetes.io/proxy-body-size: 10M
+    hosts:
+      - <YOUR_KIBANA_HOST_1>     # e.g. kibana-lab.example.com
+      - <YOUR_KIBANA_HOST_2>     # optional second hostname
+    tls:
+      - hosts:
+          - <YOUR_KIBANA_HOST_1>
+          - <YOUR_KIBANA_HOST_2>
+        secretName: <TLS_SECRET_NAME>  # e.g. kibana-tls-cert
+
+esTemplateInstaller:
+  command:
+    - /bin/sh
+    - -e
+    - -c
+    - |
+      curl -v -XPUT --fail -H 'Content-Type: application/json' "http://$ES_HOST/_template/logstash" -d ' {
+        "index_patterns" : ["logstash-*", "gcelogs-*", "gaelogs-*"],
+        "version" : 60001,
+        "settings" : {
+          "index.mapping.total_fields.limit": 5000,
+          "index.refresh_interval" : "5s",
+          "index.routing.allocation.require.box_type": "hot",
+          "number_of_shards": 2,
+          "number_of_replicas": 0
+        },
+        "mappings" : {
+          "dynamic_templates" : [ {
+            "message_field" : {
+              "path_match" : "message",
+              "match_mapping_type" : "string",
+              "mapping" : {
+                "type" : "text",
+                "norms" : false
+              }
+            }
+          }, {
+            "string_fields" : {
+              "match" : "*",
+              "match_mapping_type" : "string",
+              "mapping" : {
+                "type" : "text", "norms" : false,
+                "fields" : {
+                  "keyword" : { "type": "keyword", "ignore_above": 256 }
+                }
+              }
+            }
+          } ],
+          "properties" : {
+            "@timestamp": { "type": "date"},
+            "@version": { "type": "keyword"},
+            "geoip"  : {
+              "dynamic": true,
+              "properties" : {
+                "ip": { "type": "ip" },
+                "location" : { "type" : "geo_point" },
+                "latitude" : { "type" : "half_float" },
+                "longitude" : { "type" : "half_float" }
+              }
+            },
+            "level": {"type": "text"},
+            "time": {"type": "text"},
+            "timestamp": {"type": "text"},
+            "type": {"type": "keyword"}
+          }
+        }
+      }'

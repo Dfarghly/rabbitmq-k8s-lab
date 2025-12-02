@@ -1,0 +1,45 @@
+# ------------------------------------------------------------
+# oauth2-proxy-values.yaml
+# ------------------------------------------------------------
+# This file contains the Helm values used to install oauth2-proxy
+# in the RabbitMQ Kubernetes Lab environment.
+#
+# It replaces an internal FluxCD HelmRelease:
+#   - No FluxCD required
+#   - Safe for public GitHub usage
+#
+# ------------------------------------------------------------
+# 📌 HOW TO INSTALL OAUTH2-PROXY IN THIS LAB
+# ------------------------------------------------------------
+#
+# 1. Add the official oauth2-proxy Helm repo:
+#      helm repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
+#      helm repo update
+#
+# 2. Ensure the target namespace exists (ingress-nginx):
+#      kubectl create namespace ingress-nginx --dry-run=client -o yaml | kubectl apply -f -
+#
+# 3. Install oauth2-proxy using this values.yaml:
+#      helm upgrade --install oauth2-proxy oauth2-proxy/oauth2-proxy \
+#        -n ingress-nginx \
+#        -f infrastructure/base/oauth2-proxy/oauth2-proxy-values.yaml
+#
+# 4. Verify:
+#      kubectl get pods -n ingress-nginx
+#
+# NOTE:
+# - This file only sets image + replicaCount.
+# - You still need to configure oauth2-proxy with your IdP (client ID/secret,
+#   redirect URL, cookie secret, etc.) via extra values or a separate values file.
+#
+# ------------------------------------------------------------
+# Basic deployment settings
+# ------------------------------------------------------------
+
+replicaCount: 2
+
+image:
+  # Official oauth2-proxy image repository
+  repository: quay.io/oauth2-proxy/oauth2-proxy
+  # Replace with a real tag, e.g. "v7.6.0"
+  tag: "<OAUTH2_PROXY_TAG>"
