@@ -1,0 +1,86 @@
+# ------------------------------------------------------------
+# rabbitmq-common-user.yaml
+# ------------------------------------------------------------
+# Example RabbitMQ users + permissions for a cluster operated
+# by the RabbitMQ Cluster Operator.
+#
+# Includes:
+#   - admin user (full access)
+#   - metrics user (read-only for Prometheus exporters)
+#
+# BEFORE APPLYING:
+#   You must create the Secrets that contain the credentials:
+#
+#   kubectl create secret generic admin-rmq-user \
+#     -n rabbitmq-system \
+#     --from-literal=username=admin \
+#     --from-literal=password=admin123
+#
+#   kubectl create secret generic metrics-rmq-user \
+#     -n rabbitmq-system \
+#     --from-literal=username=metrics \
+#     --from-literal=password=metrics123
+#
+# Apply:
+#   kubectl apply -f rabbitmq-common-user.yaml
+# ------------------------------------------------------------
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: User
+metadata:
+  name: admin
+  namespace: rabbitmq-system
+spec:
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  importCredentialsSecret:
+    name: admin-rmq-user
+  tags:
+    - administrator
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Permission
+metadata:
+  name: admin-permission
+  namespace: rabbitmq-system
+spec:
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  user: admin
+  vhost: /
+  permissions:
+    configure: ".*"
+    write: ".*"
+    read: ".*"
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: User
+metadata:
+  name: metrics
+  namespace: rabbitmq-system
+spec:
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  importCredentialsSecret:
+    name: metrics-rmq-user
+  tags:
+    - monitoring
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Permission
+metadata:
+  name: metrics-permission
+  namespace: rabbitmq-system
+spec:
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  user: metrics
+  vhost: /
+  permissions:
+    configure: ""
+    write: ""
+    read: ".*"

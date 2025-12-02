@@ -1,0 +1,191 @@
+# ------------------------------------------------------------
+# RabbitMQ Operator – Lab Install 
+# ------------------------------------------------------------
+# This file contains:
+#   1. README-style instructions (this big comment)
+#   2. A Namespace manifest for `rabbitmq-system`
+#   3. A Helm values block for the RabbitMQ Operator chart
+#
+# You **do not** apply this whole file with kubectl.
+#
+# Instead:
+#
+#   1) Create the namespace using kubectl (from the first doc)
+#   2) Use the values section with `helm upgrade --install`
+#
+# ------------------------------------------------------------
+# 🧩 PREREQUISITES
+# ------------------------------------------------------------
+# - A running Kubernetes cluster (kind, k3d, GKE, etc.)
+# - kubectl configured to talk to the cluster
+# - helm (v3+)
+# - (optional) Prometheus stack if you want metrics
+#
+# ------------------------------------------------------------
+# 1️⃣ Create the namespace
+# ------------------------------------------------------------
+# You can copy-paste this command:
+#
+#   kubectl create namespace rabbitmq-system \
+#     --dry-run=client -o yaml | kubectl apply -f -
+#
+# Or apply the namespace manifest in this file:
+#
+#   kubectl apply -f rabbitmq-operator.yaml \
+#     --filename - \
+#   (but note: that will *only* create the namespace if you
+#    extract just the first document)
+#
+# ------------------------------------------------------------
+# 2️⃣ Install the RabbitMQ Cluster Operator with Helm
+# ------------------------------------------------------------
+#
+# First, decide where your operator chart comes from:
+#   - Local path:   ./rabbitmq-operator-chart
+#   - Remote repo:  myrepo/rabbitmq-operator
+#
+# Example using a local chart folder:
+#
+#   helm upgrade --install rabbitmq-operator \
+#     ./rabbitmq-operator-chart \
+#     --namespace rabbitmq-system \
+#     --create-namespace \
+#     -f rabbitmq-operator.yaml \
+#     --values <(yq '. as $all | (select(has("apiVersion") | not))' rabbitmq-operator.yaml)
+#
+# Simpler in practice:
+#   - Keep this file in Git
+#   - Copy the "values" section into `values-rabbitmq-operator.yaml`
+#   - Then run:
+#
+#   helm upgrade --install rabbitmq-operator \
+#     ./rabbitmq-operator-chart \
+#     --namespace rabbitmq-system \
+#     --create-namespace \
+#     -f values-rabbitmq-operator.yaml
+#
+# The values section below is safe for public GitHub
+# (no internal domains/registries; placeholders only).
+#
+# ------------------------------------------------------------
+# 3️⃣ Verify operator is running
+# ------------------------------------------------------------
+#
+#   kubectl get pods -n rabbitmq-system
+#
+# You should see something like:
+#
+#   NAME                                      READY   STATUS    RESTARTS   AGE
+#   rabbitmq-operator-XXXXXXXXXXXX-XXXXX      1/1     Running   0          1m
+#
+# ------------------------------------------------------------
+# END README
+# ------------------------------------------------------------
+
+---
+# ------------------------------------------------------------
+# Kubernetes Namespace for the operator and RabbitMQ clusters
+# ------------------------------------------------------------
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rabbitmq-system
+
+---
+# ------------------------------------------------------------
+# Helm values for the RabbitMQ Operator chart
+# ------------------------------------------------------------
+# This block is meant to be used as a Helm values file.
+#
+# Example:
+#   helm upgrade --install rabbitmq-operator \
+#     ./rabbitmq-operator-chart \
+#     --namespace rabbitmq-system \
+#     --create-namespace \
+#     -f values-rabbitmq-operator.yaml
+#
+# where values-rabbitmq-operator.yaml contains this YAML.
+# ------------------------------------------------------------
+
+# Number of operator replicas.
+replicaCount: 1
+
+# Namespace where the operator will watch RabbitMQ clusters.
+# If you want it to watch all namespaces, set:
+#   watchAllNamespaces: true
+watchAllNamespaces: false
+namespace: rabbitmq-system
+
+global:
+  security:
+    # In a real environment you probably want this false
+    allowInsecureImages: true
+
+clusterOperator:
+  replicaCount: 1
+  command: ["/manager"]
+  args: ["--metrics-bind-address=:9782"]
+
+  # Replace these with your real images/registry.
+  image:
+    registry: my-registry.example.com
+    repository: my-project/rabbitmq-operator
+    tag: "2.16.1"
+
+  revisionHistoryLimit: 1
+
+msgTopologyOperator:
+  replicaCount: 1
+  command: ["/manager"]
+
+  # Replace with your messaging topology operator image
+  image:
+    registry: my-registry.example.com
+    repository: my-project/rabbitmq-messaging-topology-operator
+    tag: "1.17.4"
+
+defaultImages:
+  rabbitmq:
+    # Image used for RabbitMQ clusters created by this operator
+    registry: my-registry.example.com
+    repository: my-project/rabbitmq-cluster
+    tag: "4.1.4"
+
+  credentialUpdater:
+    registry: my-registry.example.com
+    repository: my-project/rabbitmq-default-user-credential-updater
+    tag: "1.0.8"
+
+# Enable metrics (optional)
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+    # namespace: monitoring
+    # labels:
+    #   release: prometheus
+
+# Resource requests/limits (lab-friendly defaults)
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# RBAC
+rbac:
+  create: true
+
+# Webhook configuration
+admissionWebhooks:
+  enabled: true
+
+# Logging
+logging:
+  level: info
+
+# Additional environment variables (optional)
+extraEnvVars: []

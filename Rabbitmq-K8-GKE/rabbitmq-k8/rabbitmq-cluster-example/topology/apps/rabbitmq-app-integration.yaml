@@ -1,0 +1,60 @@
+# ------------------------------------------------------------
+# rabbitmq-app-integration.yaml
+# ------------------------------------------------------------
+# Example of:
+#   - Creating a dedicated vhost for an application
+#   - Creating a user for that application
+#   - Granting full permissions inside that vhost
+#
+# This pattern is ideal for app integrations in labs or tutorials.
+#
+# Before applying, create the secret containing credentials:
+#
+#   kubectl create secret generic app-user-secret \
+#     -n rabbitmq-system \
+#     --from-literal=username=app-user \
+#     --from-literal=password=app-password
+#
+# Apply:
+#   kubectl apply -f rabbitmq-app-integration.yaml
+# ------------------------------------------------------------
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Vhost
+metadata:
+  name: app-vhost
+  namespace: rabbitmq-system
+spec:
+  name: app-vhost
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: User
+metadata:
+  name: app-user
+  namespace: rabbitmq-system
+spec:
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  importCredentialsSecret:
+    name: app-user-secret
+  tags: [] # add tags if needed (e.g., "management")
+
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: Permission
+metadata:
+  name: app-user-permission
+  namespace: rabbitmq-system
+spec:
+  rabbitmqClusterReference:
+    name: rabbitmq-lab
+  user: app-user
+  vhost: app-vhost
+  permissions:
+    configure: ".*"
+    write: ".*"
+    read: ".*"

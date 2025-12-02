@@ -1,0 +1,13 @@
+# ------------------------------------------------------------
+# Namespace for RabbitMQ Operator and RabbitMQ clusters
+# ------------------------------------------------------------
+# You can apply this before installing the operator:
+#
+#   kubectl apply -f rabbitmq-system-namespace.yaml
+#
+# ------------------------------------------------------------
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rabbitmq-system

@@ -1,0 +1,29 @@
+# ------------------------------------------------------------
+# values-rabbitmq-operator.yaml
+# ------------------------------------------------------------
+# Example values file for installing the RabbitMQ Cluster
+# Operator in a lab environment using Helm.
+#
+# Chart: bitnami/rabbitmq-cluster-operator
+#
+# Usage:
+#   helm upgrade --install rabbitmq-operator \
+#     bitnami/rabbitmq-cluster-operator \
+#     --namespace rabbitmq-system \
+#     --create-namespace \
+#     -f values-rabbitmq-operator.yaml
+# ------------------------------------------------------------
+
+# Number of operator replicas.
+replicaCount: 1
+
+# Namespace where the operator will watch RabbitMQ clusters.
+# If you want it to watch all namespaces, set:
+#   watchAllNamespaces: true
+watchAllNamespaces: false
+namespace: rabbitmq-system
+
+# Operator image settings (uses the defaults from the chart)
+image:
+  pullPolicy: IfNotPresent
+  # repository: docker.io/bitnami/rabbitmq-cluster-oper

@@ -1,0 +1,109 @@
+# ------------------------------------------------------------
+# rabbitmq-cluster-example.yaml
+# ------------------------------------------------------------
+# Example RabbitMQ cluster using the RabbitMQ Cluster Operator.
+#
+# Requirements:
+# - RabbitMQ Cluster Operator installed
+# - Namespace `rabbitmq-system` exists
+#
+# Apply:
+#   kubectl apply -f rabbitmq-cluster-example.yaml
+#
+# After it’s running, you can:
+#   kubectl get rabbitmqclusters.rabbitmq.com -n rabbitmq-system
+# ------------------------------------------------------------
+
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqCluster
+metadata:
+  name: rabbitmq-lab
+  namespace: rabbitmq-system
+spec:
+  # Image with management UI enabled
+  # You can switch to a different tag or image (e.g. bitnami) if you prefer.
+  image: rabbitmq:4.1-management
+
+  replicas: 3
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  persistence:
+    storage: 10Gi
+    # Adjust to your cluster’s StorageClass (kind/minikube/etc.)
+    storageClassName: standard
+
+  rabbitmq:
+    additionalConfig: |
+      cluster_name = rabbitmq-lab
+
+      ## Prometheus metrics
+      prometheus.return_per_object_metrics = true
+
+      ## Auth mechanisms
+      auth_mechanisms.1 = PLAIN
+      auth_mechanisms.2 = AMQPLAIN
+      anonymous_login_user = none
+      loopback_users.guest = false
+
+      ## Listeners
+      listeners.tcp.default = 0.0.0.0:5672
+      # listeners.ssl.default = 0.0.0.0:5671
+
+      ## Logging
+      log.console = true
+      log.console.level = info
+
+      ## Cluster behaviour
+      cluster_partition_handling = pause_minority
+
+      ## Resource thresholds
+      vm_memory_high_watermark.relative = 0.4
+      disk_free_limit.absolute = 2GB
+
+  # Override the generated Service to expose AMQP, management UI,
+  # and the metrics endpoint with Prometheus annotations.
+  override:
+    service:
+      metadata:
+        annotations:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "15692"
+          prometheus.io/path: "/metrics"
+      spec:
+        type: ClusterIP
+        ports:
+          - name: amqp
+            port: 5672
+            targetPort: 5672
+          - name: management
+            port: 15672
+            targetPort: 15672
+          - name: metrics
+            port: 15692
+            targetPort: 15692
+
+  # Optional: add tolerations/affinity if you have special nodes/taints.
+  # For a simple lab cluster, you can leave this out.
+  #
+  # tolerations:
+  #   - key: "dedicated"
+  #     operator: "Equal"
+  #     value: "rabbitmq"
+  #     effect: "NoSchedule"
+  #
+  # affinity:
+  #   podAntiAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #       - labelSelector:
+  #           matchExpressions:
+  #             - key: app.kubernetes.io/name
+  #               operator: In
+  #               values: ["rabbitmq"]
+  #         topologyKey: kubernetes.io/hostname

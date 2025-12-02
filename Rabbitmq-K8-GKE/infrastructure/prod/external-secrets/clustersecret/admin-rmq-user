@@ -1,8 +1,8 @@
 # ------------------------------------------------------------
-# clusterexternalsecret-lpadmin-rmq-user-example.yaml
+# clusterexternalsecret-admin-rmq-user-example.yaml
 # ------------------------------------------------------------
 # Example ClusterExternalSecret for syncing a RabbitMQ admin user
-# (lpadmin-like user) from Google Cloud Secret Manager into the
+# (admin-like user) from Google Cloud Secret Manager into the
 # `rabbitmq-system` namespace.
 #
 # This uses:
@@ -32,9 +32,9 @@
 #      - <SM_RMQ_ADMIN_PASSWORD_KEY>
 #
 # 5. Apply:
-#      kubectl apply -f clusterexternalsecret-lpadmin-rmq-user-example.yaml
+#      kubectl apply -f clusterexternalsecret-admin-rmq-user-example.yaml
 #
-# 6. ESO will create a Secret named `lpadmin-rmq-user` in the
+# 6. ESO will create a Secret named `admin-rmq-user` in the
 #    `rabbitmq-system` namespace with keys:
 #      - username
 #      - password
@@ -44,10 +44,10 @@
 apiVersion: external-secrets.io/v1beta1
 kind: ClusterExternalSecret
 metadata:
-  name: lpadmin-rmq-user-example
+  name: admin-rmq-user-example
 spec:
   # Name of the ExternalSecret that will be created in the target namespaces
-  externalSecretName: "lpadmin-rmq-user"
+  externalSecretName: "admin-rmq-user"
 
   # Selects namespaces by label; here we match the rabbitmq-system namespace
   namespaceSelector:
@@ -63,7 +63,7 @@ spec:
     refreshInterval: "1m"
 
     target:
-      name: lpadmin-rmq-user
+      name: admin-rmq-user
       creationPolicy: Owner
       deletionPolicy: Retain
 
