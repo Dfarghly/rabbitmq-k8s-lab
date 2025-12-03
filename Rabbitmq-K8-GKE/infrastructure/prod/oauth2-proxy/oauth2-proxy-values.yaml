@@ -1,11 +1,7 @@
 # ------------------------------------------------------------
 # oauth2-proxy-values.yaml
 # ------------------------------------------------------------
-# Helm values for oauth2-proxy in the RabbitMQ / monitoring lab.
-#
-# This file replaces internal FluxCD HelmRelease configuration and
-# is SAFE FOR PUBLIC USE — all internal domains and secrets have
-# been replaced with placeholders.
+# Helm values for oauth2-proxy in the RabbitMQ / monitoring lab
 #
 # ------------------------------------------------------------
 # 📌 HOW TO INSTALL OAUTH2-PROXY IN THIS LAB
